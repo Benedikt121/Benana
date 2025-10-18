@@ -1,0 +1,16 @@
+{
+  "name": "benana-me-app",
+  "version": "1.0.0",
+  "description": "Interactive web application for benana.me",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Benedikt Böckle",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "sqlite3": "^5.1.6"
+  }
+}
