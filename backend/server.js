@@ -6,7 +6,7 @@ const path = require('path');
 // Der Fallback auf Port 3000 ist nur für lokales Testen.
 const PORT = process.env.SERVER_PORT || 3000;
 
-const angularDistPath = path.join(__dirname, '../frontend/dist/benana-frontend');
+const angularDistPath = path.join(__dirname, '../frontend/dist/frontend');
 
 app.use(express.static(angularDistPath));
 
