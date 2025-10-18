@@ -3,7 +3,7 @@ const app = express();
 
 // Pterodactyl gibt uns den Port über eine Umgebungsvariable.
 // Der Fallback auf Port 3000 ist nur für lokales Testen.
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.SERVER_PORT || 3000;
 
 app.get('/', (req, res) => {
   // Diese Nachricht siehst du gleich im Browser!
