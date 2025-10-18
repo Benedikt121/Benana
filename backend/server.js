@@ -15,7 +15,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(angularDistPath,'index.html'));
+  res.sendFile(path.join(angularDistPath,'/browser/index.html'));
 });
 
 // Wir lauschen auf '0.0.0.0', damit der Server von außerhalb
