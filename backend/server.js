@@ -6,7 +6,7 @@ const path = require('path');
 // Der Fallback auf Port 3000 ist nur für lokales Testen.
 const PORT = process.env.SERVER_PORT || 3000;
 
-const angularDistPath = path.join(__dirname, '../frontend/dist/frontend');
+const angularDistPath = path.join(__dirname, '../frontend/dist/frontend/browser');
 
 app.use(express.static(angularDistPath));
 
@@ -15,7 +15,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(angularDistPath,'/browser/index.html'));
+  res.sendFile(path.join(angularDistPath,'index.html'));
 });
 
 // Wir lauschen auf '0.0.0.0', damit der Server von außerhalb
