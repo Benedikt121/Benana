@@ -1,13 +1,21 @@
 const express = require('express');
 const app = express();
+const path = require('path');
 
 // Pterodactyl gibt uns den Port über eine Umgebungsvariable.
 // Der Fallback auf Port 3000 ist nur für lokales Testen.
 const PORT = process.env.SERVER_PORT || 3000;
 
-app.get('/', (req, res) => {
-  // Diese Nachricht siehst du gleich im Browser!
-  res.send('Hallo Welt von meinem eigenen benana.me Node.js-Server!');
+const angularDistPath = path.join(__dirname, '../frontend/dist/benana-frontend');
+
+app.use(express.static(angularDistPath));
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK' });
+});
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(angularDistPath,'index.html'));
 });
 
 // Wir lauschen auf '0.0.0.0', damit der Server von außerhalb
