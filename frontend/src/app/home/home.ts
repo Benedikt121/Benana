@@ -8,6 +8,8 @@ import { RouterLink } from '@angular/router';
   styleUrl: './home.css'
 })
 export class Home {
+
+  private canCreateHeart: boolean = true;
 constructor() { }
 
   @HostListener('document:mousemove', ['$event'])
@@ -26,15 +28,28 @@ constructor() { }
   }
 
   private createHeart(x: number, y: number) {
+    // Only create a heart if the cooldown is over
+    if (!this.canCreateHeart) {
+      return;
+    }
+
+    this.canCreateHeart = false;
+    setTimeout(() => {
+      this.canCreateHeart = true;
+    }, 50); 
+
     const body = document.body;
     const heart = document.createElement('span');
     
+    heart.className = 'mouse-heart';
+
     heart.style.left = x + 'px';
     heart.style.top = y + 'px';
     
-    const size = Math.random() * 20;
-    heart.style.width = 20 + size + 'px';
-    heart.style.height = 20 + size + 'px';
+
+    const size = Math.random() * 20; 
+    heart.style.width = 10 + size + 'px';
+    heart.style.height = 10 + size + 'px';
     
     const transformValue = Math.random() * 360;
     heart.style.transform = `rotate(${transformValue}deg)`;
