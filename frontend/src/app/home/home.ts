@@ -32,7 +32,7 @@ constructor() { }
     heart.style.left = x + 'px';
     heart.style.top = y + 'px';
     
-    const size = Math.random() * 40;
+    const size = Math.random() * 20;
     heart.style.width = 20 + size + 'px';
     heart.style.height = 20 + size + 'px';
     

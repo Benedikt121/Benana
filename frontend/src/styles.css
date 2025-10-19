@@ -12,6 +12,23 @@ html, body {
     -ms-user-select: none; /* Verhindert Textmarkierung auf IE */
     user-select: none; /* Standard zum Verhindern von Textmarkierung */
     touch-action: none; /* Verhindert Scrollen/Zoomen auf dem gesamten Body */
+
+    background: linear-gradient(-45deg, #d891ef, #ffb6c1, #b4eeb4, #afeeee, #000080);
+	background-size: 400% 400%;
+	animation: gradient 30s ease infinite;
+	height: 100vh;
+}
+
+@keyframes gradient {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
 }
 span
 {
