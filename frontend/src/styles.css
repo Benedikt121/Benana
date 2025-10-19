@@ -1,8 +1,17 @@
 /* You can add global styles to this file, and also import other style files */
 /* Mouse Heart Effect */
-body{
+html, body {
+    width: 100%;
+    height: 100%;
     min-height: 100vh;
     overflow: hidden;
+    
+    position: fixed; 
+
+    -webkit-user-select: none; /* Verhindert Textmarkierung auf Safari */
+    -ms-user-select: none; /* Verhindert Textmarkierung auf IE */
+    user-select: none; /* Standard zum Verhindern von Textmarkierung */
+    touch-action: none; /* Verhindert Scrollen/Zoomen auf dem gesamten Body */
 }
 span
 {
