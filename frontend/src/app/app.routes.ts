@@ -11,7 +11,7 @@ export const routes: Routes = [
     { path: 'oly', component: Oly},
 
     { path: 'kniffel', component: Kniffel},
-    
+
 
 
     { path: '**', redirectTo: '' , pathMatch: 'full' }
