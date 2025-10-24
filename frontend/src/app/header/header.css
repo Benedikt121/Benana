@@ -1,0 +1,20 @@
+img.header-image {
+    width: 10rem;
+    opacity: 0.8;
+    overflow: visible;
+    margin-top: 1rem;
+}
+
+img.header-image:hover {
+    opacity: 1;
+    animation: grow 0.5s forwards;
+}
+
+@keyframes grow {
+    0% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(1.1);
+    }
+}
