@@ -37,7 +37,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Benutzerregistrierung
-app.post('/api/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
