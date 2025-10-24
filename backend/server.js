@@ -6,6 +6,28 @@ const path = require('path');
 // Der Fallback auf Port 3000 ist nur für lokales Testen.
 const PORT = process.env.SERVER_PORT || 3000;
 
+app.use(express.json());
+
+const dbPath = path.join(__dirname, 'benana.db');
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Fehler beim Verbinden mit der Datenbank:', err.message);
+  } else {
+    console.log('Erfolgreich mit der SQLite-Datenbank verbunden.');
+    db.run(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL
+    )`, (err) => {
+      if (err) {
+        console.error('Fehler beim Erstellen der Tabelle "users":', err.message);
+      } else {
+        console.log('Tabelle "users" ist bereit.');
+      }
+    });
+  }
+});
+
 const angularDistPath = path.join(__dirname, '../frontend/dist/frontend/browser');
 
 app.use(express.static(angularDistPath));
