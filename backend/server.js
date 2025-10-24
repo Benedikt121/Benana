@@ -36,6 +36,36 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK' });
 });
 
+// Benutzerregistrierung
+app.post('/api/register', (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Benutzername und Passwort sind erforderlich.' });
+  }
+
+  try {
+    const hasedPassword = await bcrypt.hash(password, 10);
+
+    const sql = 'INSERT INTO users (username, password) VALUES (?, ?)';
+
+    db.run(sql, [username, hasedPassword], function(err) {
+      if (err) {
+        if(err.message.includes('UNIQUE constraint failed: users.username')) {
+          return res.status(409).json({ error: 'Benutzername ist bereits vergeben.' });
+        }
+
+        console.error('Fehler beim Einfügen des Benutzers:', err.message);
+        return res.status(500).json({ error: 'Interner Serverfehler.' });
+      }
+      console.log(`Neuer Benutzer mit der ID ${this.lastID} erstellt.`);
+      res.status(201).json({ message: 'Benutzer erfolgreich registriert.', userId: this.lastID });
+    });
+  } catch (error) {
+    console.error('Fehler bei der Registrierung:', error.message);
+    res.status(500).json({ error: 'Interner Serverfehler.' });
+  }});
+      
 app.get('*', (req, res) => {
   res.sendFile(path.join(angularDistPath,'index.html'));
 });
