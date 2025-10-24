@@ -1,13 +1,33 @@
 <h2>Registrieren</h2>
 
-<form>
-  <label for="username">Benutzername:</label>
-  <input type="text" id="username" name="username" required>
+<form #registerForm="ngForm" (ngSubmit)="onSubmit()">
+  <div class="form-group">
+    <label for="username">Benutzername:</label>
+    <input type="text" id="username" name="username" required [(ngModel)]="registerData.username" #usernameInput="ngModel">
 
-  <label for="password">Passwort:</label>
-  <input type="password" id="password" name="password" required>
+    <div *ngIf="usernameInput.invalid && (usernameInput.dirty || usernameInput.touched)" class="validation-error">
+     Benutzername ist erforderlich.
+    </div>
+  </div>
 
-  <button type="submit">Registrieren</button>
+  <div class="form-group">
+    <label for="password">Passwort:</label>
+    <input type="password" id="password" name="password" required [(ngModel)]="registerData.password" #passwordInput="ngModel">
+
+    <div *ngIf="passwordInput.invalid && (passwordInput.dirty || passwordInput.touched)" class="validation-error">
+     Passwort ist erforderlich.
+    </div>
+  </div>
+
+  <button type="submit" [disabled]="registerForm.invalid">Registrieren</button>
 </form>
+
+<div *ngIf="successMessage" class="success-message">
+  {{ successMessage }}
+</div>
+
+<div *ngIf="errorMessage" class="error-message">
+  {{ errorMessage }}
+</div>
 
 <p>Schon ein Konto? <a routerLink="/login">Anmelden</a></p>

@@ -1,6 +1,8 @@
 const express = require('express');
 const app = express();
 const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs');
 
 // Pterodactyl gibt uns den Port über eine Umgebungsvariable.
 // Der Fallback auf Port 3000 ist nur für lokales Testen.
