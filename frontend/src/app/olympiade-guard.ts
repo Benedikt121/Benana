@@ -15,6 +15,7 @@ export const olympiadeGuard: CanActivateFn = (route, state) => {
     // Warte, bis der initiale Ladevorgang abgeschlossen ist
     skipWhile(loading => loading === true),
     map(() => {
+      console.log(`>>> Guard Check: isLoading=${olyStateService.isLoading()}, isActive=${olyStateService.isActive()}`);
       if (olyStateService.isActive()) {
         // Wenn aktiv, leite zu /olympiade-start um
         console.log('Olympiade aktiv, leite um zu /olympiade-start');

@@ -24,9 +24,9 @@ export class OlympiadeState implements OnDestroy{
   constructor() {
     this.fetchInitialState();
 
-    this.stateUpdateSubscription = this.socketService.listen<OlympiadeStatus>('olympiadeStateUpdate')
+    this.stateUpdateSubscription = this.socketService.listen<OlympiadeStatus>('olympiadeStatusUpdate')
     .subscribe((status) => {
-      console.log('Olympiade-Status-Update via Socket erhalten:', status);
+      console.log('>>> OlympiadeStateService: Event "olympiadeStatusUpdate" erhalten:', status);
       this.updateState(status);
       if (!this.isLoading()) {
         this.isLoading.set(false);
@@ -40,7 +40,7 @@ export class OlympiadeState implements OnDestroy{
     });
 
     effect(() => {
-      console.log('Olympiade Active: ${this.isActive()}, Game IDs: ${this.activeGameIds()}');
+      console.log(`Olympiade Active: ${this.isActive()}, Game IDs: ${this.activeGameIds()}`);
     });
   }
 
@@ -75,6 +75,7 @@ export class OlympiadeState implements OnDestroy{
   }
 
   private updateState(status: OlympiadeStatus | null): void {
+    console.log('>>> OlympiadeStateService: updateState aufgerufen mit:', status);
     if (status) {
       this.isActive.set(status.isActive);
       this.activeGameIds.set(status.gameIds);

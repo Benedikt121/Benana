@@ -15,7 +15,7 @@ const allowedOrigins = [
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "allowedOrigins",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     allowedHeaders: ["*"],
     credentials: true
@@ -23,11 +23,16 @@ const io = new Server(server, {
 });
 
 app.use(cors({
-  origin: 'allowedOrigins',
+  origin: allowedOrigins,
   credentials: true
 }));
 
 app.use(express.json());
+
+let activeOlympiade = {
+  isActive: false,
+  gameIds: null,
+};
 
 const dbPath = path.join(__dirname, 'benana.db');
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -216,7 +221,7 @@ io.on('connection', (socket) => {
     if (data && typeof data.gameIds === 'string' && data.gameIds.length > 0) {
       activeOlympiade.isActive = true;
       activeOlympiade.gameIds = data.gameIds;
-      console.log('Olympiade gestartet vio Socket ${socket.id} mit Spielen:', data.gameIds);
+      console.log(`Olympiade gestartet vio Socket ${socket.id} mit Spielen:`, data.gameIds);
       io.emit('olympiadeStatusUpdate', activeOlympiade);
     } else {
       socket.emit('olympiadeError', { message: 'Ungültige gameIds beim Starten'})
@@ -226,7 +231,7 @@ io.on('connection', (socket) => {
   socket.on('endOlympiade', () => {
     activeOlympiade.isActive = false;
     activeOlympiade.gameIds = null;
-    console.log('Olympiade beendet via Socket ${socket.id}');
+    console.log(`Olympiade beendet via Socket ${socket.id}`);
     io.emit('olympiadeStatusUpdate', activeOlympiade);
   });
 
@@ -242,8 +247,3 @@ app.get('*', (req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server läuft und lauscht auf Port ${PORT}`);
 });
-
-let activeOlympiade = {
-  isActive: false,
-  gameIds: null,
-};
