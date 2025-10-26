@@ -2,7 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { Observable } from 'rxjs';
 
-const SOCKET_ENDPOINT = 'http://localhost:3000';
+const SOCKET_ENDPOINT = 'environment.socketEndpoint';
 
 @Injectable({
   providedIn: 'root'
