@@ -27,8 +27,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
         console.log('Tabelle "users" ist bereit.');
       }
     });
-  }
+
+    db.run(`CREATE TABLE IF NOT EXISTS games (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL)`, (err) => {
+      if (err) {
+        console.error('Fehler beim Erstellen der Tabelle "games":', err.message);
+      } else {
+        console.log('Tabelle "games" ist bereit.');
+      }
+  });
+}
 });
+
 
 const angularDistPath = path.join(__dirname, '../frontend/dist/frontend/browser');
 
@@ -130,6 +141,38 @@ app.post('/api/login', async (req, res) => { // Die Hauptfunktion ist async
     }
   }
 });
+
+app.get('/api/games', (req, res) => {
+  const sql = 'SELECT * FROM games ORDER BY name ASC';
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error('Fehler beim Abrufen der Spiele:', err.message);
+      return res.status(500).json({ error: 'Interner Serverfehler.' });
+    }
+    res.status(200).json(rows);
+  });
+});
+
+app.post('/api/games', (req, res) => {
+  const { name } = req.body;
+
+  if (!name || name.trim() === '') {
+    return res.status(400).json({ error: 'Spielname ist erforderlich.' });
+  }
+
+  const sql = 'INSERT INTO games (name) VALUES (?)';
+  db.run(sql, [name.trim()], function(err) {
+    if (err) {
+      if(err.message.includes('UNIQUE constraint failed: games.name')) {
+        return res.status(409).json({ error: 'Spielname ist bereits vorhanden.' });
+      }
+      console.error('Fehler beim Einfügen des Spiels:', err.message);
+      return res.status(500).json({ error: 'Interner Serverfehler.' });
+    }
+    res.status(201).json({ message: 'Spiel erfolgreich hinzugefügt.', gameId: this.lastID });
+  });
+});
+
       
 app.get('*', (req, res) => {
   res.sendFile(path.join(angularDistPath,'index.html'));
