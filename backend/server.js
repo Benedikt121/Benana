@@ -8,11 +8,14 @@ const http = require('http');
 const { Server } = require("socket.io");
 
 const PORT = process.env.SERVER_PORT || 3000;
+const allowedOrigins = [
+  'https://benana.me',
+  'http://localhost:4200'];
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:4200",
+    origin: "allowedOrigins",
     methods: ["GET", "POST"],
     allowedHeaders: ["*"],
     credentials: true
@@ -20,7 +23,7 @@ const io = new Server(server, {
 });
 
 app.use(cors({
-  origin: 'http://localhost:4200',
+  origin: 'allowedOrigins',
   credentials: true
 }));
 

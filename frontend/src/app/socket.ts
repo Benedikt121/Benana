@@ -13,8 +13,11 @@ export class SocketService implements OnDestroy {
   constructor() {
     // Stellt die Verbindung zum Backend her (gleicher Host/Port wie die Angular App)
     // Passe dies an, wenn dein Backend woanders läuft (z.B. http://localhost:3000)
+    console.log('Verbinde zu Socket.IO Endpoint:', environment.socketEndpoint);
     this.socket = io(environment.socketEndpoint, {
-      withCredentials: true
+      path: '/socket.io',
+      withCredentials: true,
+      transports: ['websocket']
     });
 
     this.socket.on('connect', () => {
