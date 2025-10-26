@@ -1,16 +1,22 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+
+import { AuthService } from '../auth.spec';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-home',
-  imports: [RouterLink],
+  imports: [RouterLink, CommonModule],
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
 export class Home {
 
   private canCreateHeart: boolean = true;
-constructor() { }
+
+authService = inject(AuthService);
+
+  constructor() { }
 
   @HostListener('document:mousemove', ['$event'])
   onMouseMove(e: MouseEvent) {
@@ -59,5 +65,9 @@ constructor() { }
     setTimeout(() => {
       heart.remove();
     }, 1000);
+  }
+
+  logout() {
+    this.authService.logout();
   }
 }

@@ -12,4 +12,7 @@
     </li>
 </ul>
 
-<a routerLink="/login">Login</a>
+<div>
+    <a *ngIf="!authService.isLoggedIn()"  routerLink="/login">Login</a>
+    <a *ngIf="authService.isLoggedIn()" (click)="logout()" href="#">Logout ({{ authService.getUsername() }})</a>
+</div>
