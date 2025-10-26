@@ -67,6 +67,43 @@ app.post('/api/register', async (req, res) => {
     console.error('Fehler bei der Registrierung:', error.message);
     res.status(500).json({ error: 'Interner Serverfehler.' });
   }});
+
+  // Benutzer-Login
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Benutzername und Passwort sind erforderlich.' });
+  }
+
+  const sql = 'SELECT * FROM users WHERE username = ?';
+
+  db.get(sql, [username], async (err, user) => {
+    if (err) {
+      console.error('Fehler bei der Abfrage des Benutzers:', err.message);
+      return res.status(500).json({ error: 'Interner Serverfehler.' });
+    }
+
+    try {
+      const isMatch = await bcrypt.compare(password, user.password);
+
+      if(isMatch) {
+        res.json({ message: 'Login erfolgreich.' });
+        res.status(200).json({
+          message: 'Login erfolgreich.',
+          userId: user.id,
+          username: user.username
+        });
+      } else {
+        console.log('Ungültige Anmeldeinformationen.');
+        res.status(401).json({ error: 'Ungültiger Benutzername oder Passwort.' });
+      }
+    } catch (error) {
+      console.error('Fehler bei der Passwortüberprüfung:', error.message);
+      res.status(500).json({ error: 'Interner Serverfehler.' });
+    }
+  });
+});
       
 app.get('*', (req, res) => {
   res.sendFile(path.join(angularDistPath,'index.html'));
