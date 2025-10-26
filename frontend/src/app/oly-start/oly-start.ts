@@ -1,8 +1,8 @@
-import { Component, effect, Inject, inject, Injector, OnDestroy, OnInit, runInInjectionContext, signal } from '@angular/core';
-import { Router } from '@angular/router'; // Router importieren
-import { OlympiadeState } from '../olympiade-state'; // Service importieren
-import { CommonModule } from '@angular/common'; // CommonModule für *ngIf etc.
-import { skipWhile, Subscription, tap } from 'rxjs';
+import { Component, effect, inject, Injector, OnDestroy, OnInit, runInInjectionContext, signal, ChangeDetectorRef } from '@angular/core';
+import { Router } from '@angular/router';
+import { OlympiadeState } from '../olympiade-state';
+import { CommonModule } from '@angular/common';
+import { skipWhile, Subscription, tap, take, skip } from 'rxjs';
 import { toObservable } from '@angular/core/rxjs-interop';
 
 @Component({
@@ -16,78 +16,80 @@ export class OlyStart implements OnInit, OnDestroy {
   router = inject(Router);
   olyStateService = inject(OlympiadeState);
   injector = inject(Injector);
+  cdr = inject(ChangeDetectorRef);
 
   gameIds = signal<string | null>(null);
-  private statusSubscription: Subscription | null = null;
-  private isInitialStatusCheckDone = false;
+  private isActiveSubscription: Subscription | null = null;
+  private isLoadingSubscription: Subscription | null = null;
+  private isComponentDestroyed = false;
 
-  private isLoading$ = toObservable(this.olyStateService.isLoading);
-  private isActive$ = toObservable(this.olyStateService.isActive);
+  private isLoading$ = toObservable(this.olyStateService.isLoading, {injector: this.injector});
+  private isActive$ = toObservable(this.olyStateService.isActive, {injector: this.injector});
 
   gameIdSyncEffect = effect(() => {
     const activeIds = this.olyStateService.activeGameIds();
-    this.gameIds.set(String(activeIds));
-    console.log('>>> OlyStart Component: gameIds gesetzt auf', activeIds);
+    const idsString = Array.isArray(activeIds) ? activeIds.join(',') : activeIds;
+    this.gameIds.set(idsString ? String(idsString) : null);
+    console.log('>>> OlyStart Component: gameIds gesetzt auf', this.gameIds());
+    if (!this.isComponentDestroyed) {
+        this.cdr.detectChanges();
+    }
   });
 
   ngOnInit(): void {
     console.log('OlympiadeStartComponent OnInit: Initialer Service Status:',
                 `isLoading=${this.olyStateService.isLoading()}, isActive=${this.olyStateService.isActive()}, gameIds=${this.olyStateService.activeGameIds()}`);
 
-    // Beobachte isLoading$, um initialen Ladevorgang zu erkennen
-    this.statusSubscription = this.isLoading$.pipe(
+    const setupIsActiveSubscription = () => {
+        this.isActiveSubscription?.unsubscribe();
+
+        // Subscription bleibt bestehen, um ggf. auf andere Änderungen zu reagieren,
+        // aber die Navigation zu '/oly' wird entfernt.
+        this.isActiveSubscription = this.isActive$.pipe(
+             skip(1) // Überspringt die initiale Emission
+        ).subscribe(isActiveNow => {
+            console.log('>>> OlyStart: isActive$ Wert (nach skip(1)) geändert auf:', isActiveNow);
+            // Die Navigation zu '/oly' wurde hier entfernt.
+            // if (!isActiveNow) { /* Navigation entfernt */ }
+         });
+    };
+
+    this.isLoadingSubscription = this.isLoading$.pipe(
       skipWhile(loading => loading === true),
-      tap(() => console.log('>>> OlyStart OnInit: Initiales Laden beendet. Beobachte isActive...')),
+      take(1),
+      tap(() => console.log('>>> OlyStart OnInit: Initiales Laden beendet. Richte isActive$-Beobachtung ein.')),
     ).subscribe(() => {
-        // Dieser Teil wird ausgeführt, sobald isLoading$ false wird
-
-        // Fallback-Check direkt nach dem Laden
-        if (!this.olyStateService.isActive()) {
-            console.warn("OlyStart Fallback (nach Laden): Kein Spiel aktiv trotz Guard-Pass. Leite zu /oly um.");
-            // Sicherstellen, dass Navigation im Injection Context läuft
-            runInInjectionContext(this.injector, () => {
-                 if (this.router.url.startsWith('/olympiade-start')) {
-                    this.router.navigate(['/oly']);
-                 }
-            });
-            return;
+        // Sicherstellen, dass die Olympiade aktiv ist, sonst passiert nichts (Guard sollte das abfangen)
+        if (this.olyStateService.isActive()) {
+            setupIsActiveSubscription();
+        } else {
+            // Sollte nicht passieren wegen Guard, aber zur Sicherheit
+            console.warn("OlyStart: Olympiade ist nach dem Laden nicht aktiv. Bleibe auf der Seite, aber keine aktive Subscription.");
         }
-
-        if (!this.statusSubscription || this.statusSubscription.closed) {
-             // Wenn nicht, neu abonnieren (sollte eigentlich nur einmal passieren)
-              this.statusSubscription = this.isActive$.subscribe(isActiveNow => {
-                console.log('>>> OlyStart: isActive$ Wert geändert auf:', isActiveNow);
-                 // Nur umleiten, wenn der Status auf false WECHSELT
-                 // (Die isLoading-Prüfung hier ist redundant, da wir schon nach skipWhile sind)
-                if (!isActiveNow) {
-                     console.warn("OlyStart: Spiel ist nicht mehr aktiv (via isActive$). Leite zu /oly um.");
-                     // Sicherstellen, dass Navigation im Injection Context läuft
-                     runInInjectionContext(this.injector, () => {
-                         if (this.router.url.startsWith('/olympiade-start')) {
-                             this.router.navigate(['/oly']);
-                         }
-                     });
-                 }
-              });
-         } else {
-             // Wenn die Subscription schon läuft, müssen wir isActive$ NICHT erneut abonnieren.
-             // Wir müssen aber sicherstellen, dass die Logik für den Wechsel zu 'false' aktiv ist.
-             // Die bestehende Subscription auf isActive$ (die im `if` oben erstellt wurde)
-             // kümmert sich bereits darum.
-             console.log(">>> OlyStart: isActive$ wird bereits beobachtet.");
-         }
-        // --- Ende dauerhafte Beobachtung ---
     });
+
+    if (!this.olyStateService.isLoading()) {
+        console.log(">>> OlyStart OnInit: Laden war bereits beendet. Prüfe Aktivität und richte ggf. isActive$-Beobachtung ein.");
+        this.isLoadingSubscription?.unsubscribe();
+        if (this.olyStateService.isActive()) {
+            setupIsActiveSubscription();
+        } else {
+             // Sollte nicht passieren wegen Guard
+             console.warn("OlyStart: Olympiade war bei Init bereits geladen, aber nicht aktiv.");
+        }
+    }
   }
 
   finishOlympiade(): void {
     console.log('Beende Olympiade...');
     this.olyStateService.endOlympiade();
-    // Zurück zur Auswahlseite oder Homepage navigieren
-    this.router.navigate(['/']);
-    // Oder zur Homepage: this.router.navigate(['/']);
+    // Navigation zur Homepage hinzugefügt
+    this.router.navigate(['/']); // Leitet zur Homepage weiter
   }
-
   ngOnDestroy(): void {
+    this.isComponentDestroyed = true;
+    this.isLoadingSubscription?.unsubscribe();
+    this.isActiveSubscription?.unsubscribe();
+    console.log("OlyStart Component destroyed, subscriptions cleaned up.");
   }
-}
+  }
