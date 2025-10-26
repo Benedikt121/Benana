@@ -69,40 +69,66 @@ app.post('/api/register', async (req, res) => {
   }});
 
   // Benutzer-Login
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => { // Die Hauptfunktion ist async
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ error: 'Benutzername und Passwort sind erforderlich.' });
+    return res.status(400).json({ message: 'Benutzername und Passwort sind erforderlich.' });
   }
 
-  const sql = 'SELECT * FROM users WHERE username = ?';
+  const sql = `SELECT * FROM users WHERE username = ?`;
 
-  db.get(sql, [username], async (err, user) => {
-    if (err) {
-      console.error('Fehler bei der Abfrage des Benutzers:', err.message);
-      return res.status(500).json({ error: 'Interner Serverfehler.' });
+  try {
+    // Schritt 1: Benutzer aus der DB holen (mit Promise)
+    const user = await new Promise((resolve, reject) => {
+      db.get(sql, [username], (err, row) => {
+        if (err) {
+          console.error('Datenbankfehler beim Login (Promise):', err.message);
+          // Wichtig: Hier noch keine Antwort senden, nur den Fehler weitergeben
+          reject(new Error('Interner Serverfehler bei DB-Abfrage.')); 
+        } else {
+          resolve(row); // Gibt den gefundenen Benutzer (oder undefined) zurück
+        }
+      });
+    });
+
+    // Schritt 2: Prüfen, ob Benutzer gefunden wurde
+    if (!user) {
+      console.log(`Loginversuch für nicht existierenden Benutzer: ${username}`);
+      return res.status(401).json({ message: 'Ungültiger Benutzername oder Passwort.' });
     }
 
-    try {
-      const isMatch = await bcrypt.compare(password, user.password);
+    // Schritt 3: Passwort vergleichen (jetzt außerhalb des db.get callbacks)
+    const isMatch = await bcrypt.compare(password, user.password);
 
-      if(isMatch) {
-        res.json({ message: 'Login erfolgreich.' });
-        res.status(200).json({
-          message: 'Login erfolgreich.',
-          userId: user.id,
-          username: user.username
-        });
-      } else {
-        console.log('Ungültige Anmeldeinformationen.');
-        res.status(401).json({ error: 'Ungültiger Benutzername oder Passwort.' });
-      }
-    } catch (error) {
-      console.error('Fehler bei der Passwortüberprüfung:', error.message);
-      res.status(500).json({ error: 'Interner Serverfehler.' });
+    if (isMatch) {
+      console.log(`Benutzer ${username} erfolgreich eingeloggt.`);
+      return res.status(200).json({
+        message: 'Login erfolgreich.',
+        userId: user.id,
+        username: user.username
+      });
+    } else {
+      console.log(`Ungültiger Loginversuch (falsches Passwort) für Benutzer: ${username}`);
+      return res.status(401).json({ message: 'Ungültiger Benutzername oder Passwort.' });
     }
-  });
+
+  } catch (error) {
+    // Fängt Fehler aus dem Promise (db.get) ODER aus bcrypt.compare ab
+    console.error('Fehler im Login-Prozess:', error);
+    // Stelle sicher, dass hier nur eine Antwort gesendet wird, falls noch keine gesendet wurde
+    if (!res.headersSent) {
+        // Unterscheide ggf. den DB-Fehler vom bcrypt-Fehler, falls nötig
+        if (error.message.includes('DB-Abfrage')) {
+             return res.status(500).json({ message: 'Datenbankfehler beim Login.' });
+        } else {
+             return res.status(500).json({ message: 'Fehler beim Passwortvergleich.' });
+        }
+    } else {
+        // Wenn Header schon gesendet wurden (sollte nicht passieren), nur loggen
+        console.error("ERR_HTTP_HEADERS_SENT - Konnte Fehlerantwort nicht senden, da bereits eine Antwort gesendet wurde.");
+    }
+  }
 });
       
 app.get('*', (req, res) => {

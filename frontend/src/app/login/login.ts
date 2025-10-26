@@ -1,10 +1,14 @@
+import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+
+import { AuthService } from '../auth.spec';
 
 @Component({
   selector: 'app-login',
-  imports: [RouterLink],
+  imports: [RouterLink, CommonModule, FormsModule],
   templateUrl: './login.html',
   styleUrl: './login.css'
 })
@@ -19,6 +23,7 @@ export class Login {
 
   http = inject(HttpClient);
   router = inject(Router);
+  authService = inject(AuthService);
 
   onSubmit() {
     this.errorMessage = null;
@@ -29,15 +34,21 @@ export class Login {
       return;
     }
 
-    this.http.post('/api/login', this.loginData).subscribe({
+    this.http.post<{ message: string, userId: number, username: string }>('/api/login', this.loginData).subscribe({
       next: (response: any) => {
         this.successMessage = 'Erfolgreich eingeloggt!';
         console.log('Login erfolgreich:', response);
+
+        this.authService.login({
+          userId: response.userId,
+          username: response.username
+        });
 
         setTimeout(() => {
           this.router.navigate(['/']);
         }, 1000);
       },
+      
       error: (error) => {
         if (error.status === 401) {
           this.errorMessage = 'Ungültiger Benutzername oder Passwort.';
