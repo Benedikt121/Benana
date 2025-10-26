@@ -180,7 +180,7 @@ app.post('/api/games', (req, res) => {
       console.error('Fehler beim Einfügen des Spiels:', err.message);
       return res.status(500).json({ error: 'Interner Serverfehler.' });
     }
-    res.status(201).json({ message: 'Spiel erfolgreich hinzugefügt.', gameId: this.lastID });
+    res.status(201).json({ message: 'Spiel erfolgreich hinzugefügt.', gameId: this.lastID, name: name.trim() });
   });
 });
 
