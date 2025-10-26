@@ -207,7 +207,7 @@ io.on('connection', (socket) => {
   socket.emit('olympiadeStatusUpdate', activeOlympiade);
 
   socket.on('startOlympiade', (data) => {
-    if (data && typeof data.gameIds === 'string' && data.gameIds.lenght > 0) {
+    if (data && typeof data.gameIds === 'string' && data.gameIds.length > 0) {
       activeOlympiade.isActive = true;
       activeOlympiade.gameIds = data.gameIds;
       console.log('Olympiade gestartet vio Socket ${socket.id} mit Spielen:', data.gameIds);
@@ -233,6 +233,6 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(angularDistPath,'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server läuft und lauscht auf Port ${PORT}`);
 });

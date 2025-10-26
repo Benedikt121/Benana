@@ -25,12 +25,6 @@ export class OlyStart implements OnInit {
     this.route.queryParamMap.subscribe(params => {
       this.gameIds.set(params.get('games'));
     });
-
-     // Sicherstellen, dass der Status korrekt ist, falls direkt hierher navigiert wird
-     if (!this.olyStateService.isActive()) {
-       console.warn("Olympiade-Start aufgerufen, aber kein Spiel aktiv. Leite zu /oly um.");
-       this.router.navigate(['/oly']);
-     }
   }
 
   finishOlympiade(): void {
