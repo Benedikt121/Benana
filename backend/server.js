@@ -1,5 +1,6 @@
 const express = require('express');
 const app = express();
+const cors = require('cors');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
@@ -11,10 +12,17 @@ const PORT = process.env.SERVER_PORT || 3000;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    origin: "http://localhost:4200",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["*"],
+    credentials: true
   }
 });
+
+app.use(cors({
+  origin: 'http://localhost:4200',
+  credentials: true
+}));
 
 app.use(express.json());
 

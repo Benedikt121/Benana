@@ -1,8 +1,8 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { Observable } from 'rxjs';
+import { environment } from '../environments/environment';
 
-const SOCKET_ENDPOINT = 'environment.socketEndpoint';
 
 @Injectable({
   providedIn: 'root'
@@ -13,7 +13,9 @@ export class SocketService implements OnDestroy {
   constructor() {
     // Stellt die Verbindung zum Backend her (gleicher Host/Port wie die Angular App)
     // Passe dies an, wenn dein Backend woanders läuft (z.B. http://localhost:3000)
-    this.socket = io(SOCKET_ENDPOINT);
+    this.socket = io(environment.socketEndpoint, {
+      withCredentials: true
+    });
 
     this.socket.on('connect', () => {
       console.log('Socket.IO verbunden:', this.socket.id);
