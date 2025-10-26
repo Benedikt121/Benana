@@ -203,11 +203,6 @@ app.post('/api/games', (req, res) => {
   });
 });
 
-let activeOlympiade = {
-  isActive: false,
-  gameIds: null,
-};
-
 app.get('/api/olympiade/status', (req, res) => {
   res.status(200).json(activeOlympiade);
 });
@@ -247,3 +242,8 @@ app.get('*', (req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server läuft und lauscht auf Port ${PORT}`);
 });
+
+let activeOlympiade = {
+  isActive: false,
+  gameIds: null,
+};
