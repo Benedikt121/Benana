@@ -30,14 +30,25 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
     db.run(`CREATE TABLE IF NOT EXISTS games (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT UNIQUE NOT NULL)`, (err) => {
+      name TEXT UNIQUE NOT NULL
+    )`, (err) => {
       if (err) {
         console.error('Fehler beim Erstellen der Tabelle "games":', err.message);
       } else {
         console.log('Tabelle "games" ist bereit.');
+        db.get('SELECT COUNT(*) as count FROM games', (err, row) => {
+          if (!err && row.count === 0) {
+            const initialGames = ['Speedrunners'];
+            const stmt = db.prepare('INSERT OR IGNORE INTO games (name) VALUES (?)');
+            initialGames.forEach(game => stmt.run(game));
+            stmt.finalize((err) => {
+              if (!err) console.log('Standardspiele hinzugefügt.');
+            });
+          }
+        });
       }
-  });
-}
+    });
+  }
 });
 
 
