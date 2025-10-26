@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit, signal, TrackByFunction, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
@@ -18,85 +18,105 @@ interface Game {
 export class Oly implements OnInit {
   router = inject(Router);
   http = inject(HttpClient);
+  cdr = inject(ChangeDetectorRef);
 
-  availableGames: Game[] = [];
-  selectedGames: Game[] = [];
-  newGameName: string = '';
-
-  isLoadingGames: boolean = false;
-  errorMessage: string | null = null;
+  availableGames: WritableSignal<Game[]> = signal([]);
+  selectedGames: WritableSignal<Game[]> = signal([]);
+  newGameName: WritableSignal<string> = signal('');
+  isLoadingGames: WritableSignal<boolean> = signal(true);
+  errorMessage: WritableSignal<string | null> = signal(null);
 
   ngOnInit(): void {
       this.loadAvalilableGames();
   }
 
+  gameTrackBy: TrackByFunction<Game> = (index: number, game: Game): number => {
+    return game.id;
+  };
+
   loadAvalilableGames(): void {
-    this.isLoadingGames = true;
-    this.errorMessage = null;
+    this.isLoadingGames.set(true);
+    this.errorMessage.set(null);
 
     this.http.get<Game[]>('/api/games').subscribe({
       next: (games) => {
-        this.availableGames = games;
-        this.isLoadingGames = false;
+        this.availableGames.set(games);
+        this.isLoadingGames.set(false);
         console.log('Spiele geladen:', this.availableGames);
+        this.cdr.detectChanges();
       },
       error: (error) => {
-        this.errorMessage = 'Fehler beim Laden der Spiele.';
-        this.isLoadingGames = false;
+        this.errorMessage.set('Fehler beim Laden der Spiele.');
+        this.isLoadingGames.set(false);
         console.error('Fehler beim Laden der Spiele:', error);
+        this.cdr.detectChanges();
       }
     });
   }
 
   addGame() {
-    const trimmedName = this.newGameName.trim();
+    const trimmedName = this.newGameName().trim();
     if (!trimmedName) return;
 
-    if(this.availableGames.find(g => g.name.toLowerCase() === trimmedName.toLowerCase())) {
-      this.errorMessage = 'Spiel mit diesem Namen existiert bereits.';
+    if(this.availableGames().find(g => g.name.toLowerCase() === trimmedName.toLowerCase())) {
+      this.errorMessage.set('Spiel mit diesem Namen existiert bereits.');
       return;
     }
 
-    this.errorMessage = null;
+    this.errorMessage.set(null);
     this.http.post<Game>('/api/games', { name: trimmedName }).subscribe({
-      next: (game) => {
-        this.availableGames.push(game);
-        this.newGameName = '';
-        console.log('Spiel hinzugefügt:', game);
+      next: (newGame) => {
+        this.availableGames.update(games => {
+          const updatedGames = [...games, newGame];
+          return updatedGames;
+        });
+        this.newGameName.set('');
+        console.log('Spiel hinzugefügt:', newGame);
+
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Fehler beim Hinzufügen des Spiels:', error);
+        let errMsg = 'Fehler beim Hinzufügen des Spiels.';
         if (error.status === 409) { 
-          this.errorMessage = 'Spiel mit diesem Namen existiert bereits.';
-           if (!this.availableGames.some(game => game.name.toLowerCase() === trimmedName.toLowerCase())) {
+          this.errorMessage.set('Ein Spiel mit diesem Namen existiert bereits (vom Server geprüft).');
+           if (!this.availableGames().some(game => game.name.toLowerCase() === trimmedName.toLowerCase())) {
           this.loadAvalilableGames();
         }
         } else {
-          this.errorMessage = 'Fehler beim Hinzufügen des Spiels.';
+          this.errorMessage.set('Fehler beim Hinzufügen des Spiels.');
         }
-        this.newGameName = '';
+        this.newGameName.set('');
+        this.cdr.detectChanges();
       }
     });
   }
 
-  selectGame(game: Game) {
-    if (!this.selectedGames.some(selected => selected.id === game.id)) {
-      this.selectedGames.push(game);
-    }
+selectGame(game: Game) {
+    this.selectedGames.update(games => {
+        if (!games.some(selected => selected.id === game.id)) {
+            return [...games, game];
+        }
+        return games;
+    });
+    this.cdr.detectChanges();
   }
 
-  isSelected(game: Game): boolean {
-    return this.selectedGames.some(selected => selected.id === game.id);
+  isGameSelected(gameToCheck: Game): boolean {
+    return this.selectedGames().some(g => g.id === gameToCheck.id);
   }
 
   removeSelectedGame(gameToRemove: Game) {
-    this.selectedGames = this.selectedGames.filter(game => game.id !== gameToRemove.id);
+    this.selectedGames.update(games => 
+      games.filter(game => game.id !== gameToRemove.id)
+    );
+    this.cdr.detectChanges();
   }
 
   startOlympiade() {
-    if (this.selectedGames.length > 0) {
-      console.log('Olympiade gestartet mit Spielen:', this.selectedGames.map(g => g.name));
-      const gameIds = this.selectedGames.map(g => g.id).join(',');
+    if (this.selectedGames().length > 0) {
+      console.log('Olympiade gestartet mit Spielen:', this.selectedGames().map(g => g.name));
+      const gameIds = this.selectedGames().map(g => g.id).join(',');
       this.router.navigate(['/oly-session'], { queryParams: { games: gameIds } });
     } else {
       alert('Bitte wählen Sie mindestens ein Spiel aus, um die Olympiade zu starten.');

@@ -1,39 +1,25 @@
 <h2>Olympiade zusammenstellen</h2>
 
-<div *ngIf="isLoadingGames">
-  <p>Lade verfügbare Spiele...</p>
+<div *ngIf="isLoadingGames()"> <p>Lade verfügbare Spiele...</p>
 </div>
 
-<div *ngIf="errorMessage" class="error-message">
-  <p>{{ errorMessage }}</p>
-</div>
+<div *ngIf="errorMessage()" class="error-message"> <p>{{ errorMessage() }}</p> </div>
 
-<div class="oly-container" *ngIf="!isLoadingGames">
-
-  <div class="game-list available-games">
+<div class="oly-container" *ngIf="!isLoadingGames()"> <div class="game-list available-games">
     <h3>Verfügbare Spiele</h3>
-    <ul *ngIf="!errorMessage && availableGames.length > 0; else noAvailableGames">
-      <li *ngFor="let game of availableGames">
-        {{ game.name }}
-        <button (click)="selectGame(game)" [disabled]="isSelected">+</button>
-      </li>
+    <ul *ngIf="!errorMessage() && availableGames().length > 0; else noAvailableGames"> 
+        <li *ngFor="let game of availableGames(); trackBy: gameTrackBy"> {{ game.name }}
+        <button (click)="selectGame(game)" [disabled]="isGameSelected(game)">+</button> </li>
     </ul>
-    <ng-template #noAvailableGames>
-       <p *ngIf="!errorMessage">Keine Spiele vorhanden. Füge neue hinzu!</p>
-       <p *ngIf="errorMessage">Spiele konnten nicht geladen werden.</p>
-     </ng-template>
+     <ng-template #noAvailableGames>
+       <p *ngIf="!errorMessage()">Keine Spiele vorhanden. Füge neue hinzu!</p> <p *ngIf="errorMessage()">Spiele konnten nicht geladen werden.</p> </ng-template>
 
 
-    <div class="add-game" *ngIf="!errorMessage">
-      <input type="text" [(ngModel)]="newGameName" placeholder="Neues Spiel hinzufügen" (keyup.enter)="addGame()"> <button (click)="addGame()" [disabled]="!newGameName.trim()">Hinzufügen</button>
-    </div>
+    <div class="add-game" *ngIf="!errorMessage()"> <input type="text" [ngModel]="newGameName()" (ngModelChange)="newGameName.set($event)" placeholder="Neues Spiel hinzufügen" (keyup.enter)="addGame()"> <button (click)="addGame()">Hinzufügen</button> </div>
   </div>
 
-  <div class="game-list selected-games" *ngIf="!errorMessage">
-    <h3>Ausgewählte Spiele für die Olympiade</h3>
-    <ul *ngIf="selectedGames.length > 0; else noGamesSelected">
-      <li *ngFor="let game of selectedGames">
-        {{ game.name }}
+  <div class="game-list selected-games" *ngIf="!errorMessage()"> <h3>Ausgewählte Spiele für die Olympiade</h3>
+    <ul *ngIf="selectedGames().length > 0; else noGamesSelected"> <li *ngFor="let game of selectedGames()"> {{ game.name }}
         <button (click)="removeSelectedGame(game)">-</button>
       </li>
     </ul>
@@ -44,6 +30,4 @@
 
 </div>
 
-<div class="start-button-container" *ngIf="!isLoadingGames">
-  <button (click)="startOlympiade()" [disabled]="selectedGames.length === 0 || !!errorMessage">Olympiade starten!</button>
-</div>
+<div class="start-button-container" *ngIf="!isLoadingGames()"> <button (click)="startOlympiade()" [disabled]="selectedGames().length === 0 || !!errorMessage()">Olympiade starten!</button> </div>
