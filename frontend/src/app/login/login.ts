@@ -4,7 +4,7 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
-import { AuthService } from '../auth.spec';
+import { AuthService } from '../auth';
 
 @Component({
   selector: 'app-login',

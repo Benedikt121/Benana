@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { ChangeDetectorRef, Component, inject, OnInit, signal, TrackByFunction, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { OlympiadeState } from '../olympiade-state';
 
 interface Game {
   id: number;
@@ -19,6 +20,7 @@ export class Oly implements OnInit {
   router = inject(Router);
   http = inject(HttpClient);
   cdr = inject(ChangeDetectorRef);
+  olyStateService = inject(OlympiadeState);
 
   availableGames: WritableSignal<Game[]> = signal([]);
   selectedGames: WritableSignal<Game[]> = signal([]);
@@ -115,9 +117,12 @@ selectGame(game: Game) {
 
   startOlympiade() {
     if (this.selectedGames().length > 0) {
-      console.log('Olympiade gestartet mit Spielen:', this.selectedGames().map(g => g.name));
       const gameIds = this.selectedGames().map(g => g.id).join(',');
-      this.router.navigate(['/oly-session'], { queryParams: { games: gameIds } });
+      console.log('Starte Olympiade mit Spielen:', gameIds);
+
+      this.olyStateService.startOlympiade(gameIds);
+
+      this.router.navigate(['/olympiade-start'], { queryParams: { games: gameIds } });
     } else {
       alert('Bitte wählen Sie mindestens ein Spiel aus, um die Olympiade zu starten.');
     }

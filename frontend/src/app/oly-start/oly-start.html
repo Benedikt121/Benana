@@ -1,0 +1,12 @@
+<h2>Olympiade läuft!</h2>
+
+<div *ngIf="gameIds(); else loadingIds">
+  <p>Spiele mit folgenden IDs werden gespielt: {{ gameIds() }}</p>
+  <p><em>(Platzhalter für Spielinhalt)</em></p>
+</div>
+
+<ng-template #loadingIds>
+  <p>Lade Spielinformationen...</p>
+</ng-template>
+
+<button (click)="finishOlympiade()">Olympiade Beenden</button>

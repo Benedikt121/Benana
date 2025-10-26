@@ -3,10 +3,18 @@ const app = express();
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
+const http = require('http');
+const { Server } = require("socket.io");
 
-// Pterodactyl gibt uns den Port über eine Umgebungsvariable.
-// Der Fallback auf Port 3000 ist nur für lokales Testen.
 const PORT = process.env.SERVER_PORT || 3000;
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(express.json());
 
@@ -184,13 +192,47 @@ app.post('/api/games', (req, res) => {
   });
 });
 
+let activeOlympiade = {
+  isActive: false,
+  gameIds: null,
+};
+
+app.get('/api/olympiade/status', (req, res) => {
+  res.status(200).json(activeOlympiade);
+});
+
+io.on('connection', (socket) => {
+  console.log('Ein Benutzer hat sich verbunden:', socket.id);
+
+  socket.emit('olympiadeStatusUpdate', activeOlympiade);
+
+  socket.on('startOlympiade', (data) => {
+    if (data && typeof data.gameIds === 'string' && data.gameIds.lenght > 0) {
+      activeOlympiade.isActive = true;
+      activeOlympiade.gameIds = data.gameIds;
+      console.log('Olympiade gestartet vio Socket ${socket.id} mit Spielen:', data.gameIds);
+      io.emit('olympiadeStatusUpdate', activeOlympiade);
+    } else {
+      socket.emit('olympiadeError', { message: 'Ungültige gameIds beim Starten'})
+    }
+  });
+
+  socket.on('endOlympiade', () => {
+    activeOlympiade.isActive = false;
+    activeOlympiade.gameIds = null;
+    console.log('Olympiade beendet via Socket ${socket.id}');
+    io.emit('olympiadeStatusUpdate', activeOlympiade);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Benutzer hat die Verbindung getrennt:', socket.id);
+  });
+});
       
 app.get('*', (req, res) => {
   res.sendFile(path.join(angularDistPath,'index.html'));
 });
 
-// Wir lauschen auf '0.0.0.0', damit der Server von außerhalb
-// des Containers (also vom Nginx-Proxy) erreichbar ist.
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server läuft und lauscht auf Port ${PORT}`);
 });

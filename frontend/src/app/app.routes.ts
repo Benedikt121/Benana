@@ -4,19 +4,23 @@ import { Oly } from './oly/oly';
 import { Kniffel } from './kniffel/kniffel';
 import { Login } from './login/login';
 import { Register } from './register/register';
+import { OlyStart } from './oly-start/oly-start';
+import { olympiadeGuard } from './olympiade-guard';
 
 
 export const routes: Routes = [
 
     { path: '', component: Home},
 
-    { path: 'oly', component: Oly},
+    { path: 'oly', component: Oly, canActivate: [olympiadeGuard]},
 
     { path: 'kniffel', component: Kniffel},
 
     { path: 'login', component: Login},
 
     { path: 'register', component: Register},
+
+    { path: 'olympiade-start', component: OlyStart},
 
     { path: '**', redirectTo: '' , pathMatch: 'full' }
 
