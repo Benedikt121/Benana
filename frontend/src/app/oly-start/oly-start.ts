@@ -5,10 +5,10 @@ import { CommonModule } from '@angular/common'; // CommonModule für *ngIf etc.
 
 @Component({
   selector: 'app-olympiade-start',
-  standalone: true, // Sicherstellen, dass es standalone ist
-  imports: [CommonModule], // CommonModule importieren
-  template: './oly-start.html',
-  styles: 'oly-startWith.css'
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './oly-start.html',
+  styleUrl: './oly-start.css'
 })
 export class OlyStart implements OnInit {
   router = inject(Router);
