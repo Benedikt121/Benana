@@ -28,7 +28,7 @@ export class OlyStart implements OnInit, OnDestroy {
     // ... (Effekt bleibt gleich, ohne detectChanges) ...
     const activeIds = this.olyStateService.activeGameIds();
     const idsString = Array.isArray(activeIds) ? activeIds.join(',') : activeIds;
-    const currentSignalValue = this.gameIds();
+    const currentSignalValue = this.gameIds(); 
     const newSignalValue = idsString ? String(idsString) : null;
     if (currentSignalValue !== newSignalValue) {
         this.gameIds.set(newSignalValue);
@@ -71,13 +71,10 @@ export class OlyStart implements OnInit, OnDestroy {
   finishOlympiade(): void {
     console.log('Beende Olympiade...');
     this.olyStateService.endOlympiade();
-    // Navigation bleibt hier, um dem Klickenden sofortiges Feedback zu geben
     this.router.navigate(['/']);
   }
 
   ngOnDestroy(): void {
-    // isLoadingSubscription wird durch takeUntilDestroyed() automatisch beendet
-    // this.isLoadingSubscription?.unsubscribe(); // Nicht mehr nötig
     console.log("OlyStart Component destroyed, subscriptions cleaned up.");
   }
-} // Die schließende Klammer war schon korrekt da.
+}
