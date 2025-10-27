@@ -16,7 +16,7 @@ export class OlympiadeState implements OnDestroy{
   private socketService = inject(SocketService);
 
   isActive: WritableSignal<boolean> = signal(false);
-  activeGameIds: WritableSignal<String | null> = signal(null);
+  activeGameIds: WritableSignal<string | null> = signal<string | null>(null);
   isLoading: WritableSignal<boolean> = signal(true);
 
   private stateUpdateSubscription: Subscription | null = null;

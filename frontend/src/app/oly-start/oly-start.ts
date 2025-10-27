@@ -49,8 +49,7 @@ export class OlyStart implements OnInit, OnDestroy {
              skip(1) // Überspringt die initiale Emission
         ).subscribe(isActiveNow => {
             console.log('>>> OlyStart: isActive$ Wert (nach skip(1)) geändert auf:', isActiveNow);
-            // Die Navigation zu '/oly' wurde hier entfernt.
-            // if (!isActiveNow) { /* Navigation entfernt */ }
+            if (!isActiveNow) { this.router.navigate(['/']); console.log('Olympiade wurde inaktiv, leite zu / weiter'); }
          });
     };
 
