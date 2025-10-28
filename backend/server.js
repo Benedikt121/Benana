@@ -32,7 +32,46 @@ app.use(express.json());
 let activeOlympiade = {
   isActive: false,
   gameIds: null,
+  selectedGamesList: [], // { id: number, name: string }
+  players: [], // { userId: number, username: string, score: number, socketId: string }
+  currentGameIndex: -1,
+  results: [], // { gameId: number, round: number, winnerUserId: number, pointsAwarded: number }
+  hostSocketId: null
 };
+
+async function getGamesByIds(idsString) {
+  if (!idsString) return [];
+  const ids = idsString.split(',').map(Number);
+  const placeholders = ids.map(() => '?').join(',');
+  const sql = `SELECT id, name FROM games WHERE id IN (${placeholders})`;
+  return new Promise((resolve, reject) => {
+    db.all(sql, ids, (err, rows) => {
+      if (err) {
+        console.error("Fehler beim Abrufen der Spieldetails:", err);
+        reject([]);
+      } else {
+        // Sortiere die Ergebnisse in der Reihenfolge der IDs, falls gewünscht
+         const sortedRows = ids.map(id => rows.find(row => row.id === id)).filter(Boolean);
+        resolve(sortedRows);
+      }
+    });
+  });
+}
+
+// Hilfsfunktion zum Senden des aktuellen Status an alle
+function broadcastOlympiadeStatus() {
+    // Nur relevante Daten senden, nicht z.B. socketId
+    const statusToSend = {
+        isActive: activeOlympiade.isActive,
+        gameIds: activeOlympiade.gameIds, // Frontend kennt die IDs schon
+        selectedGamesList: activeOlympiade.selectedGamesList,
+        players: activeOlympiade.players.map(({ socketId, ...rest }) => rest), // socketId weglassen
+        currentGameIndex: activeOlympiade.currentGameIndex,
+        results: activeOlympiade.results
+    };
+  io.emit('olympiadeStatusUpdate', statusToSend);
+  console.log("Broadcast Olympiade Status:", statusToSend);
+}
 
 const dbPath = path.join(__dirname, 'benana.db');
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -72,6 +111,43 @@ const db = new sqlite3.Database(dbPath, (err) => {
         });
       }
     });
+    db.serialize(() => {
+        db.run(`CREATE TABLE IF NOT EXISTS olympiades (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT DEFAULT CURRENT_TIMESTAMP,
+          game_ids TEXT NOT NULL
+        )`, (err) => {
+          if (err) console.error('Fehler beim Erstellen der Tabelle "olympiades":', err.message);
+          else console.log('Tabelle "olympiades" ist bereit.');
+        });
+
+        db.run(`CREATE TABLE IF NOT EXISTS olympiade_players (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          olympiade_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
+          final_score INTEGER NOT NULL,
+          FOREIGN KEY (olympiade_id) REFERENCES olympiades (id),
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )`, (err) => {
+          if (err) console.error('Fehler beim Erstellen der Tabelle "olympiade_players":', err.message);
+          else console.log('Tabelle "olympiade_players" ist bereit.');
+        });
+
+        db.run(`CREATE TABLE IF NOT EXISTS olympiade_results (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          olympiade_id INTEGER NOT NULL,
+          game_id INTEGER NOT NULL,
+          round_number INTEGER NOT NULL,
+          winner_user_id INTEGER NOT NULL,
+          points_awarded INTEGER NOT NULL,
+          FOREIGN KEY (olympiade_id) REFERENCES olympiades (id),
+          FOREIGN KEY (game_id) REFERENCES games (id),
+          FOREIGN KEY (winner_user_id) REFERENCES users (id)
+        )`, (err) => {
+          if (err) console.error('Fehler beim Erstellen der Tabelle "olympiade_results":', err.message);
+          else console.log('Tabelle "olympiade_results" ist bereit.');
+        });
+      });
   }
 });
 
@@ -215,28 +291,234 @@ app.get('/api/olympiade/status', (req, res) => {
 io.on('connection', (socket) => {
   console.log('Ein Benutzer hat sich verbunden:', socket.id);
 
-  socket.emit('olympiadeStatusUpdate', activeOlympiade);
+  socket.emit('olympiadeStatusUpdate', {
+      isActive: activeOlympiade.isActive,
+      gameIds: activeOlympiade.gameIds,
+      selectedGamesList: activeOlympiade.selectedGamesList,
+      players: activeOlympiade.players.map(({ socketId, ...rest }) => rest),
+      currentGameIndex: activeOlympiade.currentGameIndex,
+      results: activeOlympiade.results
+  });
 
-  socket.on('startOlympiade', (data) => {
+  // --- Bestehende Events ---
+  socket.on('startOlympiade', async (data) => {
+    if (activeOlympiade.isActive) {
+      return socket.emit('olympiadeError', { message: 'Es läuft bereits eine Olympiade.' });
+    }
     if (data && typeof data.gameIds === 'string' && data.gameIds.length > 0) {
-      activeOlympiade.isActive = true;
-      activeOlympiade.gameIds = data.gameIds;
-      console.log(`Olympiade gestartet vio Socket ${socket.id} mit Spielen:`, data.gameIds);
-      io.emit('olympiadeStatusUpdate', activeOlympiade);
+      try {
+        activeOlympiade.isActive = true;
+        activeOlympiade.gameIds = data.gameIds;
+        // Lade die Spiel-Details
+        activeOlympiade.selectedGamesList = await getGamesByIds(data.gameIds); // Warten bis Spiele geladen
+        activeOlympiade.players = []; // Spielerliste leeren
+        activeOlympiade.currentGameIndex = -1; // Kein Spiel ausgewählt
+        activeOlympiade.results = []; // Ergebnisse leeren
+        activeOlympiade.hostSocketId = socket.id; // Optional: Den Starter als Host markieren
+        console.log(`Olympiade gestartet via Socket ${socket.id} mit Spielen:`, activeOlympiade.selectedGamesList);
+        broadcastOlympiadeStatus(); // Sendet den aktualisierten Status an alle
+      } catch (error) {
+         socket.emit('olympiadeError', { message: 'Fehler beim Laden der Spieldetails.' });
+         // Reset state if game loading failed
+         activeOlympiade.isActive = false;
+         activeOlympiade.gameIds = null;
+         activeOlympiade.selectedGamesList = [];
+      }
     } else {
-      socket.emit('olympiadeError', { message: 'Ungültige gameIds beim Starten'})
+      socket.emit('olympiadeError', { message: 'Ungültige gameIds beim Starten' });
     }
   });
 
-  socket.on('endOlympiade', () => {
-    activeOlympiade.isActive = false;
-    activeOlympiade.gameIds = null;
-    console.log(`Olympiade beendet via Socket ${socket.id}`);
-    io.emit('olympiadeStatusUpdate', activeOlympiade);
+socket.on('endOlympiade', () => {
+  if (activeOlympiade.isActive) {
+    console.log(`Olympiade beendet via Socket ${socket.id}. Speichere Ergebnisse...`);
+    const olympiadeToSave = { ...activeOlympiade }; // Kopiere den aktuellen Zustand
+
+    db.serialize(() => {
+      const stmtOlympiade = db.prepare('INSERT INTO olympiades (game_ids) VALUES (?)');
+      stmtOlympiade.run(olympiadeToSave.gameIds, function(err) {
+        if (err) return console.error("Fehler beim Speichern der Olympiade:", err.message);
+        const olympiadeId = this.lastID;
+        console.log("Olympiade gespeichert mit ID:", olympiadeId);
+
+        const stmtPlayer = db.prepare('INSERT INTO olympiade_players (olympiade_id, user_id, final_score) VALUES (?, ?, ?)');
+        olympiadeToSave.players.forEach(p => {
+          stmtPlayer.run(olympiadeId, p.userId, p.score, (errP) => {
+            if(errP) console.error(`Fehler beim Speichern von Spieler ${p.userId}:`, errP.message);
+          });
+        });
+        stmtPlayer.finalize();
+
+        const stmtResult = db.prepare('INSERT INTO olympiade_results (olympiade_id, game_id, round_number, winner_user_id, points_awarded) VALUES (?, ?, ?, ?, ?)');
+        olympiadeToSave.results.forEach(r => {
+           stmtResult.run(olympiadeId, r.gameId, r.round, r.winnerUserId, r.pointsAwarded, (errR) => {
+              if(errR) console.error(`Fehler beim Speichern von Ergebnis für Spiel ${r.gameId}:`, errR.message);
+           });
+        });
+        stmtResult.finalize();
+      });
+      stmtOlympiade.finalize();
+    });
+  }
+  activeOlympiade.isActive = false;
+  activeOlympiade.gameIds = null;
+  activeOlympiade.selectedGamesList = [];
+  activeOlympiade.players = [];
+  activeOlympiade.currentGameIndex = -1;
+  activeOlympiade.results = [];
+  activeOlympiade.hostSocketId = null;
+  broadcastOlympiadeStatus();
+});
+
+
+  // --- Neue Events ---
+  socket.on('joinOlympiade', (userData) => {
+    if (!activeOlympiade.isActive) {
+      return socket.emit('olympiadeError', { message: 'Keine aktive Olympiade zum Beitreten.' });
+    }
+    if (!userData || typeof userData.userId !== 'number' || typeof userData.username !== 'string') {
+       return socket.emit('olympiadeError', { message: 'Ungültige Benutzerdaten.' });
+    }
+    // Prüfen, ob Spieler schon drin ist
+    if (!activeOlympiade.players.some(p => p.userId === userData.userId)) {
+      activeOlympiade.players.push({
+        userId: userData.userId,
+        username: userData.username,
+        score: 0,
+        socketId: socket.id // Wichtig für Disconnect-Handling
+      });
+      console.log(`Spieler ${userData.username} (ID: ${userData.userId}) ist beigetreten.`);
+      broadcastOlympiadeStatus(); // Spielerliste an alle senden
+    } else {
+        // Optional: Dem Spieler mitteilen, dass er schon drin ist
+        // socket.emit('alreadyJoined');
+        console.log(`Spieler ${userData.username} hat versucht, erneut beizutreten.`);
+         // Sicherstellen, dass die Socket ID aktuell ist, falls der User sich neu verbunden hat
+        const playerIndex = activeOlympiade.players.findIndex(p => p.userId === userData.userId);
+        if (playerIndex > -1) {
+            activeOlympiade.players[playerIndex].socketId = socket.id;
+        }
+    }
+  });
+
+  socket.on('selectNextGame', ({ type, gameId }) => { // type = 'manual' | 'random'
+      if (!activeOlympiade.isActive || activeOlympiade.players.length < 1) { // Mindestens 1 Spieler
+          return socket.emit('olympiadeError', { message: 'Olympiade nicht aktiv oder keine Spieler.' });
+      }
+       // Optional: Prüfen, ob der Sender der Host ist
+       // if (socket.id !== activeOlympiade.hostSocketId) {
+       //    return socket.emit('olympiadeError', { message: 'Nur der Host kann ein Spiel auswählen.' });
+       // }
+      if (activeOlympiade.currentGameIndex >= activeOlympiade.selectedGamesList.length -1) {
+          return socket.emit('olympiadeError', { message: 'Alle Spiele wurden bereits ausgewählt/gespielt.' });
+      }
+
+      let nextGameIndex = -1;
+      if (type === 'manual' && typeof gameId === 'number') {
+          const potentialIndex = activeOlympiade.selectedGamesList.findIndex(g => g.id === gameId);
+          // Sicherstellen, dass das Spiel zur Olympiade gehört UND noch nicht gespielt wurde
+          if (potentialIndex > activeOlympiade.currentGameIndex && potentialIndex < activeOlympiade.selectedGamesList.length) {
+               // Einfache Logik: Man kann nur das *nächste* ungespielte Spiel manuell wählen
+               if (potentialIndex === activeOlympiade.currentGameIndex + 1) {
+                    nextGameIndex = potentialIndex;
+               } else {
+                    // Optional: Erlaube auch spätere Spiele, aber das kompliziert die Punktevergabe
+                    return socket.emit('olympiadeError', { message: 'Nur das nächste Spiel kann manuell ausgewählt werden.' });
+               }
+          } else {
+               return socket.emit('olympiadeError', { message: 'Ungültiges oder bereits gespieltes Spiel ausgewählt.' });
+          }
+      } else if (type === 'random') {
+          // Wähle zufällig aus den *noch nicht gespielten* Spielen
+          const availableGameIndices = activeOlympiade.selectedGamesList
+              .map((game, index) => index)
+              .filter(index => index > activeOlympiade.currentGameIndex);
+
+          if (availableGameIndices.length > 0) {
+             const randomIndex = Math.floor(Math.random() * availableGameIndices.length);
+             nextGameIndex = availableGameIndices[randomIndex];
+             // --- Glücksrad-Logik (optional) ---
+             // Hier könntest du stattdessen ein 'spinWheel' Event auslösen
+             // io.emit('wheelSpinning', { games: activeOlympiade.selectedGamesList.slice(activeOlympiade.currentGameIndex + 1) });
+             // Und nach einer Verzögerung das Ergebnis senden:
+             // setTimeout(() => {
+             //     activeOlympiade.currentGameIndex = nextGameIndex;
+             //     broadcastOlympiadeStatus(); // Inklusive currentGameIndex
+             // }, 5000); // 5 Sekunden drehen lassen
+             // return; // Wichtig: Beende hier, wenn du den Timeout nutzt
+             // --- Ende Glücksrad ---
+          } else {
+             // Sollte nicht passieren wegen der Prüfung oben, aber sicher ist sicher
+             return socket.emit('olympiadeError', { message: 'Keine Spiele mehr verfügbar.' });
+          }
+      } else {
+          return socket.emit('olympiadeError', { message: 'Ungültige Spielauswahl.' });
+      }
+
+      // Wenn wir hier ankommen (ohne Glücksrad-Timeout), setzen wir den Index direkt
+      if (nextGameIndex > -1) {
+          activeOlympiade.currentGameIndex = nextGameIndex;
+          console.log(`Nächstes Spiel (Index ${activeOlympiade.currentGameIndex}): ${activeOlympiade.selectedGamesList[activeOlympiade.currentGameIndex]?.name}`);
+          broadcastOlympiadeStatus(); // Sendet Update mit neuem currentGameIndex
+      }
+  });
+
+  socket.on('declareWinner', ({ winnerUserId }) => {
+      if (!activeOlympiade.isActive || activeOlympiade.currentGameIndex < 0 || activeOlympiade.currentGameIndex >= activeOlympiade.selectedGamesList.length) {
+          return socket.emit('olympiadeError', { message: 'Kein aktives Spiel ausgewählt.' });
+      }
+      const currentGame = activeOlympiade.selectedGamesList[activeOlympiade.currentGameIndex];
+      // Sicherstellen, dass für dieses Spiel noch kein Gewinner deklariert wurde
+      if (activeOlympiade.results.some(r => r.gameId === currentGame.id)) {
+          return socket.emit('olympiadeError', { message: 'Für dieses Spiel wurde bereits ein Gewinner deklariert.' });
+      }
+
+      const winnerPlayer = activeOlympiade.players.find(p => p.userId === winnerUserId);
+      if (!winnerPlayer) {
+          return socket.emit('olympiadeError', { message: 'Ungültiger Gewinner ausgewählt.' });
+      }
+
+      const roundNumber = activeOlympiade.results.length + 1; // 1-basiert
+      const pointsAwarded = roundNumber; // Punkte = Rundennummer
+
+      // Ergebnis speichern
+      activeOlympiade.results.push({
+          gameId: currentGame.id,
+          round: roundNumber,
+          winnerUserId: winnerUserId,
+          pointsAwarded: pointsAwarded
+      });
+
+      // Punktestand aktualisieren
+      const winnerIndex = activeOlympiade.players.findIndex(p => p.userId === winnerUserId);
+      activeOlympiade.players[winnerIndex].score += pointsAwarded;
+
+      console.log(`Runde ${roundNumber} (${currentGame.name}): Gewinner ${winnerPlayer.username} erhält ${pointsAwarded} Punkte.`);
+
+       // Prüfen, ob alle Spiele gespielt wurden
+      if (activeOlympiade.results.length === activeOlympiade.selectedGamesList.length) {
+         console.log("Olympiade abgeschlossen!");
+         // Hier später das Speichern in die DB auslösen
+         // Zuerst aber den finalen Status senden
+         broadcastOlympiadeStatus();
+         // Optional: Event für abgeschlossene Olympiade senden
+         io.emit('olympiadeFinished', { results: activeOlympiade.results, players: activeOlympiade.players });
+         // Ggf. nach kurzer Zeit automatisch resetten? Oder auf 'endOlympiade' warten.
+      } else {
+         // Nur Status aktualisieren, nächstes Spiel muss gewählt werden
+         broadcastOlympiadeStatus();
+      }
   });
 
   socket.on('disconnect', () => {
     console.log('Benutzer hat die Verbindung getrennt:', socket.id);
+    // Spieler aus der aktiven Olympiade entfernen
+    const playerIndex = activeOlympiade.players.findIndex(p => p.socketId === socket.id);
+    if (activeOlympiade.isActive && playerIndex > -1) {
+      const removedPlayer = activeOlympiade.players.splice(playerIndex, 1)[0];
+      console.log(`Spieler ${removedPlayer.username} hat die Olympiade verlassen.`);
+      broadcastOlympiadeStatus();
+    }
   });
 });
       
