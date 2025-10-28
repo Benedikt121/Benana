@@ -439,13 +439,13 @@ socket.on('endOlympiade', () => {
              nextGameIndex = availableGameIndices[randomIndex];
              // --- Glücksrad-Logik (optional) ---
              // Hier könntest du stattdessen ein 'spinWheel' Event auslösen
-             // io.emit('wheelSpinning', { games: activeOlympiade.selectedGamesList.slice(activeOlympiade.currentGameIndex + 1) });
+             io.emit('wheelSpinning', { games: activeOlympiade.selectedGamesList.slice(activeOlympiade.currentGameIndex + 1) });
              // Und nach einer Verzögerung das Ergebnis senden:
-             // setTimeout(() => {
-             //     activeOlympiade.currentGameIndex = nextGameIndex;
-             //     broadcastOlympiadeStatus(); // Inklusive currentGameIndex
-             // }, 5000); // 5 Sekunden drehen lassen
-             // return; // Wichtig: Beende hier, wenn du den Timeout nutzt
+             setTimeout(() => {
+                activeOlympiade.currentGameIndex = nextGameIndex;
+                broadcastOlympiadeStatus(); // Inklusive currentGameIndex
+              }, 5000); // 5 Sekunden drehen lassen
+              return; // Wichtig: Beende hier, wenn du den Timeout nutzt
              // --- Ende Glücksrad ---
           } else {
              // Sollte nicht passieren wegen der Prüfung oben, aber sicher ist sicher

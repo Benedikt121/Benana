@@ -26,55 +26,51 @@
     <h3>Spielauswahl ({{ results().length }} / {{ selectedGamesList().length }} gespielt)</h3>
 
     <div *ngIf="currentGame(); let game">
+      <div *ngIf="canDeclareWinner()">
         <h4>Aktuelles Spiel (Runde {{ results().length + 1 }} - {{ results().length + 1 }} Punkte):</h4>
         <p class="current-game">{{ game.name }}</p>
-
-        <div *ngIf="canDeclareWinner()">
-            Gewinner auswählen:
-            <select #winnerSelect>
-                <option *ngFor="let player of players()" [value]="player.userId">
-                    {{ player.username }}
-                </option>
-            </select>
-            <button (click)="declareWinner(+winnerSelect.value)">Gewinner bestätigen</button>
-        </div>
-         <p *ngIf="!canDeclareWinner() && !currentGame()">Warte auf Gewinnerdeklaration...</p>
+        Gewinner auswählen:
+        <select #winnerSelect>
+          <option *ngFor="let player of players()" [value]="player.userId">
+            {{ player.username }}
+          </option>
+        </select>
+        <button (click)="declareWinner(+winnerSelect.value)">Gewinner bestätigen</button>
+      </div>
     </div>
 
+    <div #wheelContainer class="wheel-container" *ngIf="isSpinning()">
+        <div class="wheel-pointer">▼</div> <p>Wähle nächstes Spiel...</p>
+    </div>
 
-    <div *ngIf="canSelectNextGame()">
-        <p>Wähle das nächste Spiel:</p>
-         <ng-container *ngIf="selectedGamesList().length > nextGameIndex()">
-              <button (click)="selectGameManually(selectedGamesList()[nextGameIndex()].id)">
-                  Nächstes: {{ selectedGamesList()[nextGameIndex()].name }}
-              </button>
-         </ng-container>
-
-         <button (click)="selectGameRandomly()">Zufälliges Spiel</button>
+    <div *ngIf="!isSpinning() && !canDeclareWinner() && canSelectNextGame()">
+      <p>Wähle das nächste Spiel:</p>
+       <ng-container *ngIf="selectedGamesList().length > nextGameIndex()">
+            <button (click)="selectGameManually(selectedGamesList()[nextGameIndex()].id)">
+                Nächstes: {{ selectedGamesList()[nextGameIndex()].name }}
+            </button>
+       </ng-container>
+      <button (click)="selectGameRandomly()">Zufälliges Spiel drehen</button>
     </div>
 
      <p *ngIf="isOlympiadeFinished()">Alle Spiele gespielt!</p>
-
   </div>
 
   <div class="games-list">
-  <h4>Spiele in dieser Olympiade:</h4>
-  <ul>
-    <li *ngFor="let game of selectedGamesList(); let i = index"
-        [class.current-game]="i === currentGameIndex()"
-        [class.played-game]="isGamePlayed(game.id)">
-      {{ i + 1 }}. {{ game.name }}
-
-      <ng-container *ngIf="isGamePlayed(game.id)">
-        <ng-container *ngIf="getResultForGame(game.id) as gameResult">
-          <span> - Gewinner: {{ getWinnerName(gameResult.winnerUserId) }} ({{ gameResult.pointsAwarded }} Pkt.)</span>
+    <h4>Spiele in dieser Olympiade:</h4>
+    <ul>
+      <li *ngFor="let game of selectedGamesList(); let i = index"
+          [class.current-game]="i === currentGameIndex()"
+          [class.played-game]="isGamePlayed(game.id)">
+        {{ i + 1 }}. {{ game.name }}
+        <ng-container *ngIf="isGamePlayed(game.id)">
+          <ng-container *ngIf="getResultForGame(game.id) as gameResult">
+            <span> - Gewinner: {{ getWinnerName(gameResult.winnerUserId) }} ({{ gameResult.pointsAwarded }} Pkt.)</span>
+          </ng-container>
         </ng-container>
-      </ng-container>
-
-    </li>
-  </ul>
-</div>
-
+      </li>
+    </ul>
+  </div>
 
   <button (click)="finishOlympiade()">Olympiade Beenden & Ergebnisse speichern</button>
 
