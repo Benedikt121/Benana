@@ -1,3 +1,5 @@
+  <script src="https://cdn.jsdelivr.net/npm/spin-wheel@5.0.2/dist/spin-wheel-iife.js"></script>
+
 <h2>Olympiade läuft!</h2>
 
 <div *ngIf="isLoading()">
@@ -39,18 +41,20 @@
       </div>
     </div>
 
-    <div #wheelContainer class="wheel-container" *ngIf="isSpinning()">
-        <div class="wheel-pointer">▼</div> <p>Wähle nächstes Spiel...</p>
+    <div #wheelContainer class="wheel-container"
+         *ngIf="!isLoading() && isActive() && players().length > 0 && availableGamesForWheel().length > 0 && !canDeclareWinner() && !isOlympiadeFinished()">
+        <div class="wheel-pointer">▼</div>
+        <p *ngIf="!isSpinning()">Wähle nächstes Spiel...</p>
+        <p *ngIf="isSpinning()">Dreht...</p>
     </div>
 
-    <div *ngIf="!isSpinning() && !canDeclareWinner() && canSelectNextGame()">
-      <p>Wähle das nächste Spiel:</p>
+    <div *ngIf="!isSpinning() && canSelectNextGame() && !canDeclareWinner()">
        <ng-container *ngIf="selectedGamesList().length > nextGameIndex()">
             <button (click)="selectGameManually(selectedGamesList()[nextGameIndex()].id)">
                 Nächstes: {{ selectedGamesList()[nextGameIndex()].name }}
             </button>
        </ng-container>
-      <button (click)="selectGameRandomly()">Zufälliges Spiel drehen</button>
+       <button (click)="selectGameRandomly()" [disabled]="isSpinning()">Zufälliges Spiel drehen</button>
     </div>
 
      <p *ngIf="isOlympiadeFinished()">Alle Spiele gespielt!</p>

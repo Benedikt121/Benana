@@ -1,8 +1,10 @@
+import {Wheel} from 'https://cdn.jsdelivr.net/npm/spin-wheel@5.0.2/dist/spin-wheel-esm.js';
+
 import {
-  Component, effect, inject, Injector, OnDestroy, OnInit, signal,
+  Component, inject, Injector, OnDestroy, OnInit, signal,
   ChangeDetectorRef, DestroyRef, computed, Signal,
   AfterViewInit, // Beibehalten
-  ElementRef, // Beibehalten
+  ElementRef, effect, // effect hinzugefügt
   viewChild // Beibehalten
 } from '@angular/core';
 import { Router } from '@angular/router';
@@ -13,10 +15,6 @@ import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../auth';
 import { SocketService } from '../socket'; // SocketService importieren
 
-// KEIN Import für Wheel hier
-
-// Deklariere die globale Variable für die Bibliothek
-declare var Wheel: any;
 
 // Interfaces (Game, Player, OlympiadeResult) bleiben unverändert
 interface Game { id: number; name: string; }
@@ -53,6 +51,14 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
   results = this.olyStateService.results;
   isSpinning = signal(false);
 
+  // Signal für die Spiele, die *aktuell* im Rad angezeigt werden sollen
+  availableGamesForWheel: Signal<Game[]> = computed(() => {
+    const allGames = this.selectedGamesList();
+    const playedGameIds = new Set(this.results().map(r => r.gameId));
+    return allGames.filter(game => !playedGameIds.has(game.id));
+  });
+
+
   // --- Abgeleitete Signale (bleiben gleich) ---
   currentUser = this.authService.currentUser;
   isCurrentUserJoined = computed(() => {
@@ -72,6 +78,7 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
      const currentIdx = this.currentGameIndex();
      const resultsLen = this.results().length;
      const gamesLen = this.selectedGamesList().length;
+     // Wichtig: canDeclareWinner ist nur true, wenn der Index gesetzt wurde UND es das nächste erwartete Ergebnis ist
      return this.isActive() && currentIdx >= 0 && currentIdx === resultsLen && resultsLen < gamesLen;
   });
   isOlympiadeFinished: Signal<boolean> = computed(() =>
@@ -83,6 +90,24 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
   ngOnInit(): void {
     console.log('OlyStart OnInit');
 
+    // Effekt zum Initialisieren/Aktualisieren des Rades, wenn sich verfügbare Spiele ändern
+    effect(() => {
+      const games = this.availableGamesForWheel();
+      const container = this.wheelContainer(); //nativeElement wird in der Methode geholt
+      const isActive = this.isActive();
+      const isLoading = this.isLoading();
+
+      // Nur initialisieren, wenn aktiv, nicht ladend, Spiele vorhanden sind und Container bereit ist
+      if (!isLoading && isActive && games.length > 0 && container) {
+         // Kurze Verzögerung, um sicherzustellen, dass der Container sichtbar ist, falls er gerade erst durch *ngIf angezeigt wurde
+         setTimeout(() => this.initializeOrUpdateWheel(games), 0);
+      } else if (this.wheelInstance) {
+         // Rad entfernen, wenn keine Spiele mehr da sind oder Olympiade endet
+         this.removeWheel();
+      }
+    }, { injector: this.injector }); // Injector übergeben
+
+
     // Umleitung bei Beendigung (bleibt gleich)
     this.isActiveSubscription = toObservable(this.isActive, { injector: this.injector }).pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -90,23 +115,21 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
         pairwise(),
         filter(([prevIsActive, currIsActive]) => prevIsActive === true && currIsActive === false),
         tap(() => console.log('Olympiade wurde beendet, leite zu / um'))
-    ).subscribe(() => {
+     ).subscribe(() => {
         this.router.navigate(['/']);
     });
 
-    // Auf Socket-Event für das Drehen hören
-    this.socketService.listen<{ targetGameId: number, availableGames: Game[] }>('wheelSpinning')
+    // Auf Socket-Event hören, das das Ziel für den Spin vorgibt
+    this.socketService.listen<{ targetGameId: number, availableGames: Game[] }>('spinTargetDetermined')
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe(({ targetGameId, availableGames }) => {
-            console.log("Event 'wheelSpinning' erhalten. Ziel:", targetGameId);
-            // Stelle sicher, dass der Container sichtbar ist (isSpinning=true wird gesetzt)
-            // bevor wir versuchen, das Rad zu initialisieren und zu drehen.
-            this.isSpinning.set(true);
-            this.cdr.detectChanges(); // Warte auf DOM-Update
-            // Leichte Verzögerung, um sicherzustellen, dass der Container im DOM ist
-            setTimeout(() => {
-                this.spinTheWheel(targetGameId, availableGames);
-            }, 0);
+            console.log("Event 'spinTargetDetermined' erhalten. Ziel:", targetGameId);
+            // Nur drehen, wenn wir auch den Spin-Vorgang gestartet haben (isSpinning === true)
+            if (this.isSpinning()) {
+                 this.spinTheWheelToTarget(targetGameId, availableGames);
+            } else {
+                console.warn("spinTargetDetermined erhalten, aber isSpinning ist false. Ignoriere.");
+            }
         });
 
     // Automatisches Beitreten (bleibt gleich)
@@ -118,21 +141,62 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
     }, { allowSignalWrites: true });
   }
 
+
   ngAfterViewInit(): void {
     // Keine Initialisierung mehr hier, da sie dynamisch in spinTheWheel erfolgt
-    console.log('OlyStart AfterViewInit');
+    console.log('OlyStart AfterViewInit, wheelContainer:', this.wheelContainer());
+    // Trigger initial wheel creation if needed (effect might run earlier)
+    // this.initializeOrUpdateWheel(this.availableGamesForWheel()); // Redundant wg. effect
   }
 
   selectGameRandomly(): void {
       if (this.canSelectNextGame() && !this.isSpinning()) {
           console.log("Zufälliges Spiel anfordern...");
+          this.isSpinning.set(true); // Visuellen Spin-Zustand starten
           this.olyStateService.selectNextGame('random');
-          // isSpinning wird jetzt durch das 'wheelSpinning' Event gesetzt
+          // Das Backend sendet nun 'spinTargetDetermined'
       }
   }
 
-  // Wird durch das 'wheelSpinning' Event vom Server ausgelöst (nach kurzer Verzögerung)
-  spinTheWheel(targetGameId: number, availableGames: Game[]): void {
+  private initializeOrUpdateWheel(games: Game[]): void {
+     const containerEl = this.wheelContainer()?.nativeElement;
+     if (!containerEl || games.length === 0) {
+       console.log("Bedingungen für Rad-Initialisierung nicht erfüllt (Container oder Spiele fehlen).");
+       this.removeWheel(); // Sicherstellen, dass keine alte Instanz übrig bleibt
+       return;
+     }
+
+     console.log("Initialisiere/Aktualisiere Rad mit Spielen:", games.map(g => g.name));
+
+     const wheelItems = games.map(game => ({
+        label: game.name.length > 15 ? game.name.substring(0, 13) + '...' : game.name,
+        value: game.id,
+        // Farben dynamisch basierend auf ID oder Index
+        backgroundColor: '#' + (Math.abs(game.id * 123456) % 16777215).toString(16).padStart(6, '0')
+     }));
+
+     try {
+        this.removeWheel(); // Vorherige Instanz sicher entfernen
+
+        // Neue Instanz erstellen
+        this.wheelInstance = new Wheel(containerEl, {
+            items: wheelItems,
+            radius: 0.85, itemLabelRadius: 0.9, itemLabelRadiusMax: 0.38,
+            itemLabelRotation: 180, itemLabelAlign: 'left', itemLabelFontSizeMax: 14,
+            rotationResistance: -35, rotationSpeedMax: 500,
+            pointerAngle: 0,
+            lineWidth: 1, lineColor: '#333', borderColor: '#666', borderWidth: 2,
+            isInteractive: false, // Nicht manuell drehbar machen
+            onRest: this.onWheelRest // Handler als separate Methode
+        });
+        console.log("Neue Rad-Instanz erstellt.");
+        this.cdr.detectChanges(); // Sicherstellen, dass das Rad gezeichnet wird
+     } catch (error) {
+         console.error("Fehler beim Initialisieren/Aktualisieren des Rads:", error);
+     }
+  }
+
+  private spinTheWheelToTarget(targetGameId: number, availableGames: Game[]): void {
     const containerEl = this.wheelContainer()?.nativeElement; // Container holen
 
     if (!containerEl) {
@@ -140,76 +204,60 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
         this.isSpinning.set(false); // Zurücksetzen, falls etwas schiefgeht
         return;
     }
-     if (!availableGames || availableGames.length === 0) {
+    if (!this.wheelInstance) {
+        console.error("Kann Rad nicht drehen: Keine Rad-Instanz vorhanden.");
+        this.isSpinning.set(false);
+        return;
+    }
+    if (!availableGames || availableGames.length === 0) {
         console.error("Kann Rad nicht drehen: Keine Spiele verfügbar.");
         this.isSpinning.set(false);
         return;
     }
 
+    // WICHTIG: Den Index anhand der *aktuell im Rad befindlichen* Items finden.
+    // `availableGames` vom Server dient nur zur ID->Index Zuordnung für *diese* Drehung.
+    // Finde den Index des Ziel-Spiels in der Liste der *aktuell angezeigten* Spiele
+    const currentWheelGames = this.availableGamesForWheel(); // Die Spiele, die gerade im Rad sind
+    const targetIndex = currentWheelGames.findIndex(game => game.id === targetGameId);
 
-    // Finde den Index des Ziel-Spiels in der Liste der verfügbaren Spiele
-    const targetIndex = availableGames.findIndex(game => game.id === targetGameId);
+
     if (targetIndex === -1) {
-        console.error("Zielspiel nicht in verfügbarer Liste gefunden!");
+        console.error(`Zielspiel (ID: ${targetGameId}) nicht in der aktuellen Rad-Liste gefunden! Aktuelle Liste:`, currentWheelGames.map(g => g.id));
         this.isSpinning.set(false);
         return;
     }
 
-    console.log("Aktualisiere/Initialisiere Rad-Segmente:", availableGames);
-
-    // Items für die Bibliothek vorbereiten
-    const wheelItems = availableGames.map(game => ({
-        label: game.name.length > 15 ? game.name.substring(0, 13) + '...' : game.name,
-        value: game.id
-        // Optional: Farben hinzufügen
-        // backgroundColor: '#' + Math.floor(Math.random()*16777215).toString(16)
-    }));
-
     try {
-        // Zerstöre alte Instanz, falls vorhanden
-        if (this.wheelInstance && typeof this.wheelInstance.remove === 'function') {
-            this.wheelInstance.remove();
-            this.wheelInstance = null;
-            console.log("Alte Rad-Instanz entfernt.");
-        }
-
-        // Neue Instanz erstellen
-        this.wheelInstance = new Wheel(containerEl, {
-            items: wheelItems,
-            radius: 0.85,
-            itemLabelRadius: 0.7,
-            itemLabelRadiusMax: 0.4,
-            itemLabelFontSizeMax: 14,
-            rotationResistance: -35,
-            pointerAngle: 0,
-            lineWidth: 1,
-            lineColor: '#333',
-            borderColor: '#666',
-            borderWidth: 2,
-            itemLabelColors: ['#000'],
-            itemBackgroundColors: ['#eee', '#ddd'],
-            onRest: (event: any) => {
-                console.log('Rad gestoppt bei:', event.currentIndex, event.currentItem);
-                // Nur den Status zurücksetzen. Der Server bestimmt das Ergebnis via 'olympiadeStatusUpdate'.
-                this.isSpinning.set(false);
-                this.cdr.detectChanges();
-            }
-        });
-        console.log("Neue Rad-Instanz erstellt.");
-
-        // Warte kurz, damit das Rad gezeichnet wird, bevor wir drehen
-        setTimeout(() => {
-            if (!this.wheelInstance) return; // Sicherheitscheck
-            console.log(`Starte Drehung zum Spiel ${availableGames[targetIndex].name} (Index ${targetIndex})`);
-            const spinDuration = 5000;
-            const revolutions = 3;
-            this.wheelInstance.spinToItem(targetIndex, spinDuration, true, revolutions, 1);
-        }, 100); // Kurze Verzögerung für das Rendern
-
+        console.log(`Starte Drehung zum Spiel ${currentWheelGames[targetIndex].name} (Index ${targetIndex})`);
+        const spinDuration = 5000; // Dauer der Animation
+        const revolutions = 3; // Anzahl Umdrehungen
+        this.wheelInstance.spinToItem(targetIndex, spinDuration, true, revolutions, 1);
     } catch (error) {
-         console.error("Fehler beim Initialisieren/Drehen des Rads:", error);
+         console.error("Fehler beim Starten der Rad-Drehung:", error);
          this.isSpinning.set(false);
     }
+  }
+
+  // Wird aufgerufen, wenn die Rad-Animation stoppt
+  private onWheelRest = (event: any) => {
+     console.log('Rad gestoppt bei:', event.currentIndex, event.currentItem);
+     // Nur den visuellen Status zurücksetzen.
+     // Der Server bestimmt das Ergebnis und sendet 'olympiadeStatusUpdate'.
+     this.isSpinning.set(false);
+     this.cdr.detectChanges(); // UI aktualisieren (z.B. Button wieder aktivieren)
+  }
+
+  private removeWheel(): void {
+      if (this.wheelInstance && typeof this.wheelInstance.remove === 'function') {
+          try {
+              this.wheelInstance.remove();
+              console.log("Vorhandene Rad-Instanz entfernt.");
+          } catch (e) {
+              console.error("Fehler beim Entfernen der Rad-Instanz:", e);
+          }
+          this.wheelInstance = null;
+      }
   }
 
 
@@ -261,9 +309,6 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnDestroy(): void {
     console.log("OlyStart Component destroyed.");
-    if (this.wheelInstance && typeof this.wheelInstance.remove === 'function') {
-        this.wheelInstance.remove();
-        console.log("Glücksrad-Instanz entfernt.");
-    }
+    this.removeWheel(); // Sicherstellen, dass das Rad entfernt wird
   }
 }

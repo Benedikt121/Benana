@@ -207,7 +207,7 @@ app.post('/api/login', async (req, res) => { // Die Hauptfunktion ist async
         if (err) {
           console.error('Datenbankfehler beim Login (Promise):', err.message);
           // Wichtig: Hier noch keine Antwort senden, nur den Fehler weitergeben
-          reject(new Error('Interner Serverfehler bei DB-Abfrage.')); 
+          reject(new Error('Interner Serverfehler bei DB-Abfrage.'));
         } else {
           resolve(row); // Gibt den gefundenen Benutzer (oder undefined) zurück
         }
@@ -437,17 +437,25 @@ socket.on('endOlympiade', () => {
           if (availableGameIndices.length > 0) {
              const randomIndex = Math.floor(Math.random() * availableGameIndices.length);
              nextGameIndex = availableGameIndices[randomIndex];
-             // --- Glücksrad-Logik (optional) ---
-             // Hier könntest du stattdessen ein 'spinWheel' Event auslösen
-             io.emit('wheelSpinning', { games: activeOlympiade.selectedGamesList.slice(activeOlympiade.currentGameIndex + 1) });
-             // Und nach einer Verzögerung das Ergebnis senden:
-             setTimeout(() => {
-                activeOlympiade.currentGameIndex = nextGameIndex;
-                broadcastOlympiadeStatus(); // Inklusive currentGameIndex
-              }, 5000); // 5 Sekunden drehen lassen
-              return; // Wichtig: Beende hier, wenn du den Timeout nutzt
-             // --- Ende Glücksrad ---
-          } else {
+
+             // --- Angepasste Glücksrad-Logik ---
+             const targetGame = activeOlympiade.selectedGamesList[nextGameIndex]; // Das ausgewählte Spiel holen
+             const availableGamesForWheel = activeOlympiade.selectedGamesList.slice(activeOlympiade.currentGameIndex + 1); // Spiele, die im Rad angezeigt werden sollen
+
+             // Sende das Ziel und die Liste für das Rad *sofort* an alle Clients
+             console.log(`Sende spinTargetDetermined: target=${targetGame.id}, available=${availableGamesForWheel.length} Spiele`);
+             io.emit('spinTargetDetermined', {
+               targetGameId: targetGame.id,
+               availableGames: availableGamesForWheel
+             });
+
+             // Starte den Timeout, um den *offiziellen* Spielstatus erst nach der Animation zu aktualisieren
+              setTimeout(() => {
+                 activeOlympiade.currentGameIndex = nextGameIndex;
+                 broadcastOlympiadeStatus(); // Inklusive currentGameIndex
+               }, 5000); // 5 Sekunden warten (entspricht Animationsdauer im Frontend)
+               return; // Wichtig: Beende hier, da der Status erst nach dem Timeout aktualisiert wird
+           } else {
              // Sollte nicht passieren wegen der Prüfung oben, aber sicher ist sicher
              return socket.emit('olympiadeError', { message: 'Keine Spiele mehr verfügbar.' });
           }
@@ -455,7 +463,7 @@ socket.on('endOlympiade', () => {
           return socket.emit('olympiadeError', { message: 'Ungültige Spielauswahl.' });
       }
 
-      // Wenn wir hier ankommen (ohne Glücksrad-Timeout), setzen wir den Index direkt
+      // Dieser Block wird nur noch für 'manual' erreicht
       if (nextGameIndex > -1) {
           activeOlympiade.currentGameIndex = nextGameIndex;
           console.log(`Nächstes Spiel (Index ${activeOlympiade.currentGameIndex}): ${activeOlympiade.selectedGamesList[activeOlympiade.currentGameIndex]?.name}`);
@@ -521,7 +529,7 @@ socket.on('endOlympiade', () => {
     }
   });
 });
-      
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(angularDistPath,'index.html'));
 });
