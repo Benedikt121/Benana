@@ -1,4 +1,3 @@
-// @ts-ignore
 import {Wheel} from 'https://cdn.jsdelivr.net/npm/spin-wheel@5.0.2/dist/spin-wheel-esm.js';
 
 import {
