@@ -6,7 +6,8 @@ import {
   ChangeDetectorRef, DestroyRef, computed, Signal,
   AfterViewInit, // Beibehalten
   ElementRef, effect, // effect hinzugefügt
-  viewChild // Beibehalten
+  viewChild, // Beibehalten
+  runInInjectionContext
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { OlympiadeState } from '../olympiade-state';
@@ -134,12 +135,14 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
         });
 
     // Automatisches Beitreten (bleibt gleich)
-    effect(() => {
+    runInInjectionContext(this.injector, () => {
+          effect(() => {
        if (!this.isLoading() && this.isActive() && this.currentUser() && !this.isCurrentUserJoined()) {
            console.log("OlyStart: Olympiade aktiv, User eingeloggt aber nicht beigetreten. Trete automatisch bei.");
            this.joinGame();
        }
     }, { allowSignalWrites: true });
+    })
   }
 
 
