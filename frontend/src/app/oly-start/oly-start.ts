@@ -190,7 +190,7 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
             rotationResistance: -35, rotationSpeedMax: 500,
             pointerAngle: 0,
             lineWidth: 1, lineColor: '#333', borderColor: '#666', borderWidth: 2,
-            isInteractive: false, // Nicht manuell drehbar machen
+            isInteractive: true, // Nicht manuell drehbar machen
             onRest: this.onWheelRest // Handler als separate Methode
         });
         console.log("Neue Rad-Instanz erstellt.");
@@ -235,7 +235,7 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
     try {
         console.log(`Starte Drehung zum Spiel ${currentWheelGames[targetIndex].name} (Index ${targetIndex})`);
         const spinDuration = 5000; // Dauer der Animation
-        const revolutions = 3; // Anzahl Umdrehungen
+        const revolutions = Math.floor(Math.random() * (10 - 3 + 1)) + 3; // random int between 3 and 10 inclusive
         this.wheelInstance.spinToItem(targetIndex, spinDuration, true, revolutions, 1);
     } catch (error) {
          console.error("Fehler beim Starten der Rad-Drehung:", error);
