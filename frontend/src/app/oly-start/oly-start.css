@@ -1,3 +1,9 @@
 .wheel-container {
-    height: 20rem;
+    height: 20rem; 
+    overflow: hidden;
+
+    -webkit-user-select: none; /* Verhindert Textmarkierung auf Safari */
+    -ms-user-select: none; /* Verhindert Textmarkierung auf IE */
+    user-select: none; /* Standard zum Verhindern von Textmarkierung */
+    touch-action: none; /* Verhindert Scrollen/Zoomen auf dem gesamten Body */
 }
