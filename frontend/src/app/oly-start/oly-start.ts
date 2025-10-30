@@ -67,22 +67,40 @@ export class OlyStart implements OnInit, OnDestroy, AfterViewInit {
       const user = this.currentUser();
       return user ? this.players().some(p => p.userId === user.userId) : false;
   });
+
   currentGame: Signal<Game | null> = computed(() => {
       const index = this.currentGameIndex();
       const games = this.selectedGamesList();
       return (index >= 0 && index < games.length) ? games[index] : null;
   });
+
   nextGameIndex: Signal<number> = computed(() => this.results().length);
   canSelectNextGame: Signal<boolean> = computed(() =>
       this.isActive() && this.results().length < this.selectedGamesList().length
   );
-  canDeclareWinner: Signal<boolean> = computed(() => {
-     const currentIdx = this.currentGameIndex();
-     const resultsLen = this.results().length;
-     const gamesLen = this.selectedGamesList().length;
-     // Wichtig: canDeclareWinner ist nur true, wenn der Index gesetzt wurde UND es das nächste erwartete Ergebnis ist
-     return this.isActive() && currentIdx >= 0 && currentIdx === resultsLen && resultsLen < gamesLen;
+
+canDeclareWinner: Signal<boolean> = computed(() => {
+    const currentIdx = this.currentGameIndex(); // z.B. 3 (nach dem Spin)
+    const games = this.selectedGamesList();     // z.B. Liste mit 5 Spielen
+    const results = this.results();           // z.B. [] (Länge 0)
+    const isActive = this.isActive();
+
+    if (!isActive || currentIdx < 0 || currentIdx >= games.length) {
+      return false;
+    }
+    // Finde das Spiel, das laut Index aktuell ausgewählt ist
+    const currentGame = games[currentIdx]; // z.B. Spiel an Index 3
+    if (!currentGame) {
+      return false;
+    }
+    // Prüfe, ob für DIESES SPIEL (anhand der ID) bereits ein Ergebnis vorliegt
+    const gameHasResult = results.some(r => r.gameId === currentGame.id);
+
+    // Wir können einen Gewinner deklarieren, wenn ein Spiel ausgewählt ist (currentIdx > -1)
+    // UND für dieses spezifische Spiel noch KEIN Ergebnis existiert.
+    return !gameHasResult;
   });
+
   isOlympiadeFinished: Signal<boolean> = computed(() =>
     this.isActive() && this.results().length === this.selectedGamesList().length && this.selectedGamesList().length > 0
   );
