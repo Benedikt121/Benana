@@ -1,5 +1,5 @@
 .wheel-container {
-    height: 20rem; 
+    height: 40%; 
     overflow: hidden;
 
     -webkit-user-select: none; /* Verhindert Textmarkierung auf Safari */
