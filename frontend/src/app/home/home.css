@@ -1,5 +1,6 @@
 .home_container{
     position: fixed; 
+    overflow: hidden;
 
     -webkit-user-select: none; /* Verhindert Textmarkierung auf Safari */
     -ms-user-select: none; /* Verhindert Textmarkierung auf IE */
