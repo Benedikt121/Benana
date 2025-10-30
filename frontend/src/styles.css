@@ -4,13 +4,6 @@ html, body {
     height: 100%;
     min-height: 100vh;
     overflow: hidden;
-    
-    position: fixed; 
-
-    -webkit-user-select: none; /* Verhindert Textmarkierung auf Safari */
-    -ms-user-select: none; /* Verhindert Textmarkierung auf IE */
-    user-select: none; /* Standard zum Verhindern von Textmarkierung */
-    touch-action: none; /* Verhindert Scrollen/Zoomen auf dem gesamten Body */
 
     background: linear-gradient(-45deg, #d891ef, #ffb6c1, #b4eeb4, #afeeee, #000080);
 	background-size: 400% 400%;

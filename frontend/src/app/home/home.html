@@ -1,18 +1,20 @@
-<h1>ICH LIEBE DICH MAUS!!</h1>
+<div class="home_container">
+    <h1>ICH LIEBE DICH MAUS!!</h1>
 
-<ul>
-    <li>
-        <a routerLink="/oly">Olympiade</a>
-    </li>
-    <li>
-        <a routerLink="/kniffel">Kniffel</a>
-    </li>
-    <li>
-        <p>Bald weiteres...</p>
-    </li>
-</ul>
+    <ul>
+        <li>
+            <a routerLink="/oly">Olympiade</a>
+        </li>
+        <li>
+            <a routerLink="/kniffel">Kniffel</a>
+        </li>
+        <li>
+            <p>Bald weiteres...</p>
+        </li>
+    </ul>
 
-<div>
-    <a *ngIf="!authService.isLoggedIn()"  routerLink="/login">Login</a>
-    <a *ngIf="authService.isLoggedIn()" (click)="logout()" href="#">Logout ({{ authService.getUsername() }})</a>
+    <div>
+        <a *ngIf="!authService.isLoggedIn()"  routerLink="/login">Login</a>
+        <a *ngIf="authService.isLoggedIn()" (click)="logout()" href="#">Logout ({{ authService.getUsername() }})</a>
+    </div>
 </div>
