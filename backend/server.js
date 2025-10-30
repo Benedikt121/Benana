@@ -401,46 +401,57 @@ socket.on('endOlympiade', () => {
     }
   });
 
+  // =================================================================
+  // HIER IST DIE WICHTIGE ÄNDERUNG
+  // =================================================================
   socket.on('selectNextGame', ({ type, gameId }) => { // type = 'manual' | 'random'
       if (!activeOlympiade.isActive || activeOlympiade.players.length < 1) { // Mindestens 1 Spieler
           return socket.emit('olympiadeError', { message: 'Olympiade nicht aktiv oder keine Spieler.' });
       }
-       // Optional: Prüfen, ob der Sender der Host ist
-       // if (socket.id !== activeOlympiade.hostSocketId) {
-       //    return socket.emit('olympiadeError', { message: 'Nur der Host kann ein Spiel auswählen.' });
-       // }
-      if (activeOlympiade.currentGameIndex >= activeOlympiade.selectedGamesList.length -1) {
-          return socket.emit('olympiadeError', { message: 'Alle Spiele wurden bereits ausgewählt/gespielt.' });
+
+      // *** KORREKTUR 1: Prüfen, ob alle Spiele bereits *gespielt* wurden ***
+      // Verwendet results.length statt currentGameIndex
+      if (activeOlympiade.results.length >= activeOlympiade.selectedGamesList.length) {
+          console.log(`Fehler: selectNextGame obwohl results(${activeOlympiade.results.length}) >= games(${activeOlympiade.selectedGamesList.length})`);
+          return socket.emit('olympiadeError', { message: 'Alle Spiele wurden bereits gespielt.' });
+      }
+
+      // *** KORREKTUR 2: Prüfen, ob ein Spiel bereits ausgewählt wurde und auf Bewertung wartet ***
+      // Vergleicht currentGameIndex mit der Anzahl der Ergebnisse
+      if (activeOlympiade.currentGameIndex > activeOlympiade.results.length - 1) {
+           console.log(`Fehler: selectNextGame obwohl index(${activeOlympiade.currentGameIndex}) > results(${activeOlympiade.results.length - 1})`);
+           return socket.emit('olympiadeError', { message: 'Das aktuelle Spiel muss erst bewertet werden.' });
       }
 
       let nextGameIndex = -1;
       if (type === 'manual' && typeof gameId === 'number') {
-          const potentialIndex = activeOlympiade.selectedGamesList.findIndex(g => g.id === gameId);
-          // Sicherstellen, dass das Spiel zur Olympiade gehört UND noch nicht gespielt wurde
-          if (potentialIndex > activeOlympiade.currentGameIndex && potentialIndex < activeOlympiade.selectedGamesList.length) {
-               // Einfache Logik: Man kann nur das *nächste* ungespielte Spiel manuell wählen
-               if (potentialIndex === activeOlympiade.currentGameIndex + 1) {
-                    nextGameIndex = potentialIndex;
-               } else {
-                    // Optional: Erlaube auch spätere Spiele, aber das kompliziert die Punktevergabe
-                    return socket.emit('olympiadeError', { message: 'Nur das nächste Spiel kann manuell ausgewählt werden.' });
-               }
-          } else {
-               return socket.emit('olympiadeError', { message: 'Ungültiges oder bereits gespieltes Spiel ausgewählt.' });
+          // (Manuelle Logik bleibt gleich, ist aber anfällig für dieselben Fehler)
+          // Bessere manuelle Logik (optional):
+          // 1. Prüfen, ob gameId bereits in results vorhanden ist
+          if (activeOlympiade.results.some(r => r.gameId === gameId)) {
+             return socket.emit('olympiadeError', { message: 'Dieses Spiel wurde bereits gespielt.' });
           }
-      } else if (type === 'random') {
-          // Wähle zufällig aus den *noch nicht gespielten* Spielen
-          const availableGameIndices = activeOlympiade.selectedGamesList
-              .map((game, index) => index)
-              .filter(index => index > activeOlympiade.currentGameIndex);
+          // 2. Index finden
+          const potentialIndex = activeOlympiade.selectedGamesList.findIndex(g => g.id === gameId);
+          if (potentialIndex > -1) {
+              nextGameIndex = potentialIndex;
+          } else {
+              return socket.emit('olympiadeError', { message: 'Spiel-ID nicht in dieser Olympiade gefunden.' });
+          }
 
-          if (availableGameIndices.length > 0) {
-             const randomIndex = Math.floor(Math.random() * availableGameIndices.length);
-             nextGameIndex = availableGameIndices[randomIndex];
+      } else if (type === 'random') {
+          // *** KORREKTUR 3: Verfügbare Spiele basierend auf 'results', nicht auf 'currentGameIndex' filtern ***
+          const playedGameIds = new Set(activeOlympiade.results.map(r => r.gameId));
+          const availableGames = activeOlympiade.selectedGamesList.filter(game => !playedGameIds.has(game.id));
+
+          if (availableGames.length > 0) {
+             const randomGame = availableGames[Math.floor(Math.random() * availableGames.length)];
+             // Finde den *echten Index* dieses Spiels in der selectedGamesList
+             nextGameIndex = activeOlympiade.selectedGamesList.findIndex(g => g.id === randomGame.id);
 
              // --- Angepasste Glücksrad-Logik ---
-             const targetGame = activeOlympiade.selectedGamesList[nextGameIndex]; // Das ausgewählte Spiel holen
-             const availableGamesForWheel = activeOlympiade.selectedGamesList.slice(activeOlympiade.currentGameIndex + 1); // Spiele, die im Rad angezeigt werden sollen
+             const targetGame = activeOlympiade.selectedGamesList[nextGameIndex];
+             const availableGamesForWheel = availableGames; // Die bereits gefilterte Liste
 
              // Sende das Ziel und die Liste für das Rad *sofort* an alle Clients
              console.log(`Sende spinTargetDetermined: target=${targetGame.id}, available=${availableGamesForWheel.length} Spiele`);
@@ -453,29 +464,41 @@ socket.on('endOlympiade', () => {
               setTimeout(() => {
                  activeOlympiade.currentGameIndex = nextGameIndex;
                  broadcastOlympiadeStatus(); // Inklusive currentGameIndex
+                 console.log(`Timeout abgelaufen: Setze currentGameIndex auf ${nextGameIndex}`);
                }, 5000); // 5 Sekunden warten (entspricht Animationsdauer im Frontend)
                return; // Wichtig: Beende hier, da der Status erst nach dem Timeout aktualisiert wird
            } else {
-             // Sollte nicht passieren wegen der Prüfung oben, aber sicher ist sicher
+             // Diese Bedingung sollte jetzt mit KORREKTUR 1 übereinstimmen
              return socket.emit('olympiadeError', { message: 'Keine Spiele mehr verfügbar.' });
           }
       } else {
           return socket.emit('olympiadeError', { message: 'Ungültige Spielauswahl.' });
       }
 
-      // Dieser Block wird nur noch für 'manual' erreicht
+      // Dieser Block wird nur noch für 'manual' erreicht (wenn KEIN Timeout verwendet wird)
       if (nextGameIndex > -1) {
           activeOlympiade.currentGameIndex = nextGameIndex;
           console.log(`Nächstes Spiel (Index ${activeOlympiade.currentGameIndex}): ${activeOlympiade.selectedGamesList[activeOlympiade.currentGameIndex]?.name}`);
-          broadcastOlympiadeStatus(); // Sendet Update mit neuem currentGameIndex
+          // Beim manuellen Auswählen muss der Status sofort gesendet werden
+          broadcastOlympiadeStatus();
       }
   });
+  // =================================================================
+  // ENDE DER ÄNDERUNG
+  // =================================================================
+
 
   socket.on('declareWinner', ({ winnerUserId }) => {
       if (!activeOlympiade.isActive || activeOlympiade.currentGameIndex < 0 || activeOlympiade.currentGameIndex >= activeOlympiade.selectedGamesList.length) {
           return socket.emit('olympiadeError', { message: 'Kein aktives Spiel ausgewählt.' });
       }
+
+      // *** KORREKTUR 4: Sicherstellen, dass das Spiel, das bewertet wird, das 'currentGameIndex' Spiel ist ***
       const currentGame = activeOlympiade.selectedGamesList[activeOlympiade.currentGameIndex];
+      if (!currentGame) {
+          return socket.emit('olympiadeError', { message: 'Interner Fehler: Aktuelles Spiel nicht gefunden.'});
+      }
+
       // Sicherstellen, dass für dieses Spiel noch kein Gewinner deklariert wurde
       if (activeOlympiade.results.some(r => r.gameId === currentGame.id)) {
           return socket.emit('olympiadeError', { message: 'Für dieses Spiel wurde bereits ein Gewinner deklariert.' });
@@ -506,12 +529,10 @@ socket.on('endOlympiade', () => {
        // Prüfen, ob alle Spiele gespielt wurden
       if (activeOlympiade.results.length === activeOlympiade.selectedGamesList.length) {
          console.log("Olympiade abgeschlossen!");
-         // Hier später das Speichern in die DB auslösen
          // Zuerst aber den finalen Status senden
          broadcastOlympiadeStatus();
          // Optional: Event für abgeschlossene Olympiade senden
          io.emit('olympiadeFinished', { results: activeOlympiade.results, players: activeOlympiade.players });
-         // Ggf. nach kurzer Zeit automatisch resetten? Oder auf 'endOlympiade' warten.
       } else {
          // Nur Status aktualisieren, nächstes Spiel muss gewählt werden
          broadcastOlympiadeStatus();
