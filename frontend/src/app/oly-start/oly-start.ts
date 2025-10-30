@@ -96,6 +96,8 @@ canDeclareWinner: Signal<boolean> = computed(() => {
     // Prüfe, ob für DIESES SPIEL (anhand der ID) bereits ein Ergebnis vorliegt
     const gameHasResult = results.some(r => r.gameId === currentGame.id);
 
+    
+
     // Wir können einen Gewinner deklarieren, wenn ein Spiel ausgewählt ist (currentIdx > -1)
     // UND für dieses spezifische Spiel noch KEIN Ergebnis existiert.
     return !gameHasResult;
@@ -259,6 +261,9 @@ canDeclareWinner: Signal<boolean> = computed(() => {
          console.error("Fehler beim Starten der Rad-Drehung:", error);
          this.isSpinning.set(false);
     }
+
+    this.isSpinning.set(false);
+     this.cdr.detectChanges();
   }
 
   // Wird aufgerufen, wenn die Rad-Animation stoppt

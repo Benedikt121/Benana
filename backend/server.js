@@ -465,7 +465,7 @@ socket.on('endOlympiade', () => {
                  activeOlympiade.currentGameIndex = nextGameIndex;
                  broadcastOlympiadeStatus(); // Inklusive currentGameIndex
                  console.log(`Timeout abgelaufen: Setze currentGameIndex auf ${nextGameIndex}`);
-               }, 5000); // 5 Sekunden warten (entspricht Animationsdauer im Frontend)
+               }, 5200); // 5 Sekunden warten (entspricht Animationsdauer im Frontend)
                return; // Wichtig: Beende hier, da der Status erst nach dem Timeout aktualisiert wird
            } else {
              // Diese Bedingung sollte jetzt mit KORREKTUR 1 übereinstimmen
@@ -534,7 +534,6 @@ socket.on('endOlympiade', () => {
          // Optional: Event für abgeschlossene Olympiade senden
          io.emit('olympiadeFinished', { results: activeOlympiade.results, players: activeOlympiade.players });
       } else {
-         // Nur Status aktualisieren, nächstes Spiel muss gewählt werden
          broadcastOlympiadeStatus();
       }
   });
