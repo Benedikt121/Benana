@@ -72,3 +72,8 @@ html, body {
         filter: hue-rotate(100deg);
     }
 }
+
+.dice-box-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}

@@ -1,8 +1,11 @@
 #dice-box {
-    height: 300px;
-    width: 100%;
+    height: 30rem;
+    min-height: 300px;
+    width: 30rem;
     border: 1px solid #ccc;
+    position: relative; 
   }
+
   .dice-display {
     display: flex;
     gap: 10px;

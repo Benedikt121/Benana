@@ -20,13 +20,7 @@ export class Kniffel implements AfterViewInit {
 
   private diceBox: any; 
   public rollCount: number = 0;
-  
-  // ====================================================================
-  // ÄNDERUNG: 'dice' ist jetzt ein Array von 'KniffelDie'
   public dice: KniffelDie[] = [];
-  // 'heldIndices' wird ENTFERNT
-  // private heldIndices: boolean[] = [false, false, false, false, false]; // <-- WEG DAMIT
-  // ====================================================================
 
   isRolling: boolean = false;
 
@@ -36,8 +30,9 @@ export class Kniffel implements AfterViewInit {
     this.diceBox = new DiceBox({
       container: '#dice-box',
       assetPath: '/assets/dice-box/',
-      scale: 8,
+      scale: 5,
       throwForce: 6,
+      theme: 'default-extra',
     });
 
     this.diceBox.onRollComplete = (rollResult: any) => { 
@@ -138,7 +133,7 @@ export class Kniffel implements AfterViewInit {
       if (this.rollCount === 1) {
         // 'heldIndices' muss nicht mehr zurückgesetzt werden
         this.isRolling = true; 
-        await this.diceBox.roll('5d6'); 
+        await this.diceBox.roll('5dpip'); 
       } else {
         // ====================================================================
         // ÄNDERUNG: Wir filtern 'this.dice' basierend auf 'kd.isHeld'
@@ -150,7 +145,7 @@ export class Kniffel implements AfterViewInit {
         if (diceToReroll.length > 0) {
           await this.diceBox.remove(diceToReroll);
           this.isRolling = true; 
-          await this.diceBox.add(diceToReroll.length + 'd6');
+          await this.diceBox.add(diceToReroll.length + 'dpip');
         } else {
            console.log('Alle Würfel gehalten, kein neuer Wurf.');
            this.rollCount--;
