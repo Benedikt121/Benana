@@ -418,8 +418,8 @@ socket.on('endOlympiade', () => {
 
       // *** KORREKTUR 2: Prüfen, ob ein Spiel bereits ausgewählt wurde und auf Bewertung wartet ***
       // Vergleicht currentGameIndex mit der Anzahl der Ergebnisse
-      if (activeOlympiade.currentGameIndex > activeOlympiade.results.length - 1) {
-           console.log(`Fehler: selectNextGame obwohl index(${activeOlympiade.currentGameIndex}) > results(${activeOlympiade.results.length - 1})`);
+      if (activeOlympiade.currentGameIndex > activeOlympiade.results.length) {
+           console.log(`Fehler: selectNextGame obwohl index(${activeOlympiade.currentGameIndex}) > results(${activeOlympiade.results.length})`);
            return socket.emit('olympiadeError', { message: 'Das aktuelle Spiel muss erst bewertet werden.' });
       }
 
@@ -523,6 +523,7 @@ socket.on('endOlympiade', () => {
       // Punktestand aktualisieren
       const winnerIndex = activeOlympiade.players.findIndex(p => p.userId === winnerUserId);
       activeOlympiade.players[winnerIndex].score += pointsAwarded;
+      activeOlympiade.currentGameIndex = -1;
 
       console.log(`Runde ${roundNumber} (${currentGame.name}): Gewinner ${winnerPlayer.username} erhält ${pointsAwarded} Punkte.`);
 

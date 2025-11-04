@@ -150,7 +150,8 @@ canDeclareWinner: Signal<boolean> = computed(() => {
             if (this.isSpinning()) {
                  this.spinTheWheelToTarget(targetGameId, availableGames);
             } else {
-                console.warn("spinTargetDetermined erhalten, aber isSpinning ist false. Ignoriere.");
+                this.isSpinning() === true;
+                this.spinTheWheelToTarget(targetGameId, availableGames);
             }
         });
 
@@ -221,7 +222,8 @@ canDeclareWinner: Signal<boolean> = computed(() => {
   }
 
   private spinTheWheelToTarget(targetGameId: number, availableGames: Game[]): void {
-    const containerEl = this.wheelContainer()?.nativeElement; // Container holen
+    const containerEl = this.wheelContainer()?.nativeElement;
+    console.log("Drehen...")
 
     if (!containerEl) {
         console.error("Kann Rad nicht drehen: Container nicht gefunden.");
