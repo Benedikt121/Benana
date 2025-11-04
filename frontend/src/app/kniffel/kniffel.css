@@ -1,0 +1,40 @@
+#dice-box {
+    height: 300px;
+    width: 100%;
+    border: 1px solid #ccc;
+  }
+  .dice-display {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .die-value {
+    width: 60px;
+    height: 60px;
+    border: 2px solid #555;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 24px;
+    font-weight: bold;
+    user-select: none;
+  }
+  .die-value.held {
+    background-color: #d1ecff;
+    border-color: #007bff;
+  }
+  .die-value small {
+    font-size: 10px;
+    font-weight: normal;
+  }
+  .controls {
+    margin: 15px 0;
+    display: flex;
+    gap: 10px;
+  }
+  button:disabled {
+    opacity: 0.5;
+  }
