@@ -5,3 +5,71 @@
     user-select: none; /* Standard zum Verhindern von Textmarkierung */
     touch-action: none; /* Verhindert Scrollen/Zoomen auf dem gesamten Body */
 }
+
+/* oly-start.css */
+
+/* Der Hauptcontainer, der das Rad, den Zeiger und den Text enthält */
+.wheel-container {
+  /* WICHTIG: Macht dies zum Positionierungs-Kontext (Anker)
+    für den absolut positionierten Zeiger. 
+  */
+  position: relative; 
+  
+  /* Definiere eine feste Größe für das Rad.
+    Passe dies (300px) an, falls dein Rad größer oder kleiner ist.
+  */
+  width: 300px;
+  height: 300px;
+  
+  /* Zentriert den Rad-Container selbst auf der Seite (optional) */
+  margin: 40px auto; /* 40px Abstand oben/unten, auto links/rechts */
+}
+
+/* Der Zeiger (Pfeil '▼') */
+.wheel-pointer {
+  position: absolute;  /* Positioniert das Element relativ zum .wheel-container */
+  
+  /* Positioniert die Spitze des Pfeils genau über der Mitte des Containers */
+  top: -15px;          /* 15px *über* dem oberen Rand des Containers */
+  left: 50%;           /* Zentriert es horizontal (Startpunkt in der Mitte) */
+  
+  /* Zieht das Element um 50% seiner *eigenen* Breite nach links zurück.
+    Dies ist der Trick für perfektes horizontales Zentrieren.
+  */
+  transform: translateX(-50%); 
+  
+  font-size: 30px;     /* Macht das '▼' Symbol größer */
+  color: #333;          /* Farbe des Pfeils */
+  
+  /* Stellt sicher, dass der Zeiger *über* dem Rad (Canvas) liegt,
+    das von der 'spin-wheel'-Bibliothek erstellt wird.
+  */
+  z-index: 10;         
+  
+  /* Verhindert, dass der Pfeil Klicks blockiert (falls er über dem Rad schwebt) */
+  pointer-events: none; 
+}
+
+/* Die Texte ("Wähle..." / "Dreht...") */
+.wheel-container p {
+  position: absolute;
+  
+  /* Positioniert den Text *unter* dem Rad-Container */
+  bottom: -30px; /* 30px unter dem unteren Rand des Containers */
+  left: 0;
+  width: 100%;
+  text-align: center;
+  margin: 0;
+  font-style: italic;
+  color: #666;
+}
+
+/* Stellt sicher, dass das Canvas (vom Wheel-Plugin) den Container ausfüllt.
+  Das `:host ::ng-deep` ist notwendig, um ein Element zu stylen,
+  das von einer externen Bibliothek (spin-wheel) erzeugt wird.
+*/
+:host ::ng-deep .wheel-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
