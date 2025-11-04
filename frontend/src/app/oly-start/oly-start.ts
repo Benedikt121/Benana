@@ -118,12 +118,15 @@ canDeclareWinner: Signal<boolean> = computed(() => {
       const container = this.wheelContainer(); //nativeElement wird in der Methode geholt
       const isActive = this.isActive();
       const isLoading = this.isLoading();
+      const isDeclaringWinner = this.canDeclareWinner();
+
+
 
       // Nur initialisieren, wenn aktiv, nicht ladend, Spiele vorhanden sind und Container bereit ist
-      if (!isLoading && isActive && games.length > 0 && container) {
+      if (!isLoading && isActive && games.length > 0 && container && !isDeclaringWinner) {
          // Kurze Verzögerung, um sicherzustellen, dass der Container sichtbar ist, falls er gerade erst durch *ngIf angezeigt wurde
          setTimeout(() => this.initializeOrUpdateWheel(games), 0);
-      } else if (this.wheelInstance) {
+      } else if (this.wheelInstance && games.length === 0) {
          // Rad entfernen, wenn keine Spiele mehr da sind oder Olympiade endet
          this.removeWheel();
       }
