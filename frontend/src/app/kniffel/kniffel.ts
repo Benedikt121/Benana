@@ -71,15 +71,18 @@ export class Kniffel implements AfterViewInit, OnDestroy {
         
         try {
           this.diceBox = new DiceBox("#dice-box-physics", { //
-            assetPath: "/assets/dice-box-threejs/",
-            theme_surface: "green-felt",
-            theme_material: "wood",
-            theme_colorset: "white",
-            strength: 1.2,
+            assetPath: "/assets/",
+            sounds: true,
+            volume: 30,
+            sound_dieMaterial: 'plastic',
+            theme_material: "plastic",
+            theme_colorset: 'pinkdreams',
+            theme_texture: 'marble',
+            strength: 2.5,
             shadows: true,
-            baseScale: 100,
+            baseScale: 70,
             light_intensity: 1.0,
-            gravity_multiplier: 400
+            gravity_multiplier: 600
           });
 
           await this.diceBox.initialize(); 
