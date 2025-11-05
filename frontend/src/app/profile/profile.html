@@ -1,13 +1,38 @@
-<div class="profile-container">
+<div class="profile-container" 
+     [style.border-color]="personalColor()"
+     [style.box-shadow]="'0 4px 15px ' + personalColor() + '40'">
   
   <div *ngIf="errorMessage()" class="error-message">
     {{ errorMessage() }}
   </div>
 
   <div *ngIf="!errorMessage()">
-    <h2>{{ username() }}</h2>
+    
+    <div class="profile-avatar">
+      <img [src]="avatarUrl() || '/Portrait_Placeholder.png'" alt="Profilbild">
+    </div>
+
+    <h2>Profil von {{ username() }}</h2>
 
     <div *ngIf="owner()" class="owner-controls">
+      <h3>Dein Profil bearbeiten</h3>
+      
+      <div class="form-group">
+        <label for="avatar-upload">Profilbild ändern (max. 2MB):</label>
+        <input id="avatar-upload" type="file" accept="image/*" (change)="onFileSelected($event)">
+      </div>
+
+      <div class="form-group">
+        <label for="color-picker">Persönliche Farbe:</label>
+        <input id="color-picker" type="color" [value]="personalColor()" (change)="onColorChange($event)">
+      </div>
+
+      <div *ngIf="uploadMessage()" class="upload-message">
+        {{ uploadMessage() }}
+      </div>
+      
+      <hr class="owner-hr">
+
       <a (click)="logout()" href="#" class="logout-button">Ausloggen</a>
     </div>
 

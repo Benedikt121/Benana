@@ -6,6 +6,8 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const http = require('http');
 const { Server } = require("socket.io");
+const multer = require('multer');
+const fs = require('fs');
 
 const PORT = process.env.SERVER_PORT || 3000;
 const allowedOrigins = [
@@ -232,7 +234,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
     db.run(`CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL
+      password TEXT NOT NULL,
+      avatar_url TEXT,
+      personal_color TEXT DEFAULT '#FFFFFF'
     )`, (err) => {
       if (err) {
         console.error('Fehler beim Erstellen der Tabelle "users":', err.message);
@@ -325,6 +329,34 @@ const db = new sqlite3.Database(dbPath, (err) => {
 const angularDistPath = path.join(__dirname, '../frontend/dist/frontend/browser');
 
 app.use(express.static(angularDistPath));
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+const avatarStroage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, 'uplaods/avatars/');
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const userId = req.params.id;
+    const fileExtension = path.extname(file.originalname);
+    const  newFilename = `user_${userId}${fileExtension}`;
+    cb(null, newFilename);
+  }
+});
+
+const uploadAvatar = multer({
+  storage: avatarStroage,
+  limits: {filesize: 5 * 1024 * 1024},
+  fileFilter: (req, file, cd) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error("Nur Bilddateien sind erlaubt!"), false);
+    }
+  }
+}). single('avatar');
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK' });
@@ -449,10 +481,10 @@ app.get('/api/profile/:id', async (req, res) => {
 
   try {
     // 1. Benutzerdaten abrufen
-    const user = await dbGet('SELECT id, username FROM users WHERE id = ?', [userId]);
-    if (!user) {
-      return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
-    }
+    const user = await dbGet('SELECT id, username, avatar_url, personal_color FROM users WHERE id = ?', [userId]);
+      if (!user) {
+        return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
+      }
 
     // 2. Alle Spielverläufe parallel abrufen
     const [olympiadeHistory, kniffelHistory] = await Promise.all([
@@ -462,16 +494,73 @@ app.get('/api/profile/:id', async (req, res) => {
 
     // 3. Alles zusammen als JSON senden
     res.status(200).json({
-      userId: user.id,
-      username: user.username,
-      olympiadeHistory,
-      kniffelHistory
-    });
+    userId: user.id,
+    username: user.username,
+    avatarUrl: user.avatar_url, // <-- NEU
+    personalColor: user.personal_color, // <-- NEU
+    olympiadeHistory,
+    kniffelHistory
+  });
 
   } catch (error) {
     console.error(`Fehler beim Abrufen von Profil ${userId}:`, error.message);
     res.status(500).json({ error: 'Interner Serverfehler.' });
   }
+});
+
+app.post('/api/profile/:id/avatar', (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+
+  uploadAvatar(req, res, async (err) => {
+    if (err) {
+      console.error("Multer-Fehler:", err.message);
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'Keine Datei hochgeladen.' });
+    }
+
+    // Dateipfad für die DB (relativ zum Server-Root, wie im static path)
+    const relativePath = `/uploads/avatars/${req.file.filename}`;
+
+    // Pfad in der DB speichern
+    const sql = 'UPDATE users SET avatar_url = ? WHERE id = ?';
+    db.run(sql, [relativePath, userId], function(err) {
+      if (err) {
+        console.error("DB-Fehler beim Speichern des Avatars:", err.message);
+        return res.status(500).json({ error: 'Avatar-Pfad konnte nicht gespeichert werden.' });
+      }
+      console.log(`Avatar für User ${userId} aktualisiert: ${relativePath}`);
+      res.status(200).json({ 
+        message: 'Upload erfolgreich!', 
+        avatarUrl: relativePath 
+      });
+    });
+  });
+});
+
+app.put('/api/profile/:id/color', (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+  const { color } = req.body;
+
+  if (!color || !/^#[0-9A-F]{6}$/i.test(color)) {
+    return res.status(400).json({ error: 'Ungültiges Farbformat.' });
+  }
+
+  // WICHTIG: Auch hier fehlt die Backend-Authentifizierung.
+
+  const sql = 'UPDATE users SET personal_color = ? WHERE id = ?';
+  db.run(sql, [color, userId], function(err) {
+    if (err) {
+      console.error("DB-Fehler beim Speichern der Farbe:", err.message);
+      return res.status(500).json({ error: 'Farbe konnte nicht gespeichert werden.' });
+    }
+    console.log(`Farbe für User ${userId} aktualisiert: ${color}`);
+    res.status(200).json({ 
+      message: 'Farbe erfolgreich gespeichert!', 
+      personalColor: color 
+    });
+  });
 });
 
 

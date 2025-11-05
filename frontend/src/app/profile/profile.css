@@ -1,0 +1,17 @@
+/* Avatar-Styling */
+.profile-avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: -95px auto 10px auto; /* Negativer Margin zieht es nach oben */
+  background-color: #eee;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  position: relative; /* Für z-index */
+  z-index: 2;
+}
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Stellt sicher, dass das Bild den Kreis füllt */
+}
