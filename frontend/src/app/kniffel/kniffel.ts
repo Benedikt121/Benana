@@ -97,7 +97,6 @@ export class Kniffel implements AfterViewInit {
     this.dice = []; 
     this.isRolling = false;
     this.initializeScoreboard();
-    this.diceBox.clear(); // Methode der neuen Lib
     console.log('Neues Spiel gestartet.');
     this.cdr.detectChanges();
   }
@@ -281,7 +280,6 @@ private parseResults(rollResult: any): { value: number }[] {
     }
     this.rollCount = 0;
     this.dice = [];
-    this.diceBox.clear(); // Szene für nächsten Wurf leeren
     this.scoreboard.forEach(r => r.potentialScore = 0);
     this.cdr.detectChanges();
   }
