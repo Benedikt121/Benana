@@ -39,6 +39,16 @@ let activeOlympiade = {
   hostSocketId: null
 };
 
+let activeKniffelGame = {
+  isActive: false,
+  players: [],
+  scoreboards: {},
+  totalScores: {},
+  currentPlayerSocketId: null,
+  currentDice: [], 
+  rollCount: 0
+}
+
 async function getGamesByIds(idsString) {
   if (!idsString) return [];
   const ids = idsString.split(',').map(Number);
