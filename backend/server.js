@@ -41,13 +41,17 @@ let activeOlympiade = {
 
 let activeKniffelGame = {
   isActive: false,
-  players: [],
-  scoreboards: {},
-  totalScores: {},
-  currentPlayerSocketId: null,
-  currentDice: [], 
-  rollCount: 0
-}
+  players: [], // { userId: number, username: string, socketId: string }
+  scoreboards: {}, // Format: { "userId_1": [ ...13 ScoreboardRow-Objekte... ], "userId_2": [ ... ] }
+  totalScores: {}, // Format: { "userId_1": { upper: 0, ... }, "userId_2": { ... } }
+
+  currentPlayerSocketId: null, 
+  
+  currentDice: [], // Format: { die: { value: 6 }, isHeld: false }
+  rollCount: 0, // 0, 1, 2, oder 3
+  
+  lastRollNotation: null // z.B. "5d6@1,4,4,5,2"
+};
 
 async function getGamesByIds(idsString) {
   if (!idsString) return [];
@@ -68,6 +72,133 @@ async function getGamesByIds(idsString) {
   });
 }
 
+function createNewScoreboard() {
+  return [
+    { id: 'ones', name: 'Einser', section: 'upper', score: null, potentialScore: 0, isSet: false },
+    { id: 'twos', name: 'Zweier', section: 'upper', score: null, potentialScore: 0, isSet: false },
+    { id: 'threes', name: 'Dreier', section: 'upper', score: null, potentialScore: 0, isSet: false },
+    { id: 'fours', name: 'Vierer', section: 'upper', score: null, potentialScore: 0, isSet: false },
+    { id: 'fives', name: 'Fünfer', section: 'upper', score: null, potentialScore: 0, isSet: false },
+    { id: 'sixes', name: 'Sechser', section: 'upper', score: null, potentialScore: 0, isSet: false },
+    { id: 'threeOfAKind', name: 'Dreierpasch', section: 'lower', score: null, potentialScore: 0, isSet: false },
+    { id: 'fourOfAKind', name: 'Viererpasch', section: 'lower', score: null, potentialScore: 0, isSet: false },
+    { id: 'fullHouse', name: 'Full House', section: 'lower', score: null, potentialScore: 0, isSet: false },
+    { id: 'smallStraight', name: 'Kleine Straße', section: 'lower', score: null, potentialScore: 0, isSet: false },
+    { id: 'largeStraight', name: 'Große Straße', section: 'lower', score: null, potentialScore: 0, isSet: false },
+    { id: 'kniffel', name: 'Kniffel', section: 'lower', score: null, potentialScore: 0, isSet: false },
+    { id: 'chance', name: 'Chance', section: 'lower', score: null, potentialScore: 0, isSet: false },
+  ];
+}
+
+/**
+ * Berechnet die Gesamtpunktzahl für ein einzelnes Scoreboard
+ */
+function calculateTotals(scoreboard) {
+  const totals = { upper: 0, bonus: 0, upperTotal: 0, lowerTotal: 0, grandTotal: 0 };
+  let upperScore = 0;
+  scoreboard
+    .filter(r => r.section === 'upper' && r.isSet)
+    .forEach(r => upperScore += r.score || 0);
+  
+  totals.upper = upperScore;
+  totals.bonus = (upperScore >= 63) ? 35 : 0;
+  totals.upperTotal = totals.upper + totals.bonus;
+
+  let lowerScore = 0;
+  scoreboard
+    .filter(r => r.section === 'lower' && r.isSet)
+    .forEach(r => lowerScore += r.score || 0);
+
+  totals.lowerTotal = lowerScore;
+  totals.grandTotal = totals.upperTotal + totals.lowerTotal;
+  return totals;
+}
+
+/**
+ * Berechnet die potenziellen Punkte für ein Scoreboard basierend auf einem Wurf
+ */
+function updatePotentialScores(scoreboard, diceValues) {
+    if (diceValues.length === 0) {
+      scoreboard.forEach(row => row.potentialScore = 0);
+      return;
+    }
+    const counts = getDiceCounts(diceValues);
+    scoreboard.forEach(row => {
+      if (!row.isSet) {
+        switch (row.id) {
+          case 'ones': row.potentialScore = calculateSumOfNumber(diceValues, 1); break;
+          case 'twos': row.potentialScore = calculateSumOfNumber(diceValues, 2); break;
+          case 'threes': row.potentialScore = calculateSumOfNumber(diceValues, 3); break;
+          case 'fours': row.potentialScore = calculateSumOfNumber(diceValues, 4); break;
+          case 'fives': row.potentialScore = calculateSumOfNumber(diceValues, 5); break;
+          case 'sixes': row.potentialScore = calculateSumOfNumber(diceValues, 6); break;
+          case 'threeOfAKind': row.potentialScore = calculateThreeOfAKind(diceValues, counts); break;
+          case 'fourOfAKind': row.potentialScore = calculateFourOfAKind(diceValues, counts); break;
+          case 'fullHouse': row.potentialScore = calculateFullHouse(counts); break;
+          case 'smallStraight': row.potentialScore = calculateSmallStraight(diceValues); break;
+          case 'largeStraight': row.potentialScore = calculateLargeStraight(diceValues); break;
+          case 'kniffel': row.potentialScore = calculateKniffel(counts); break;
+          case 'chance': row.potentialScore = calculateChance(diceValues); break;
+        }
+      }
+    });
+}
+
+function getDiceCounts(diceValues) {
+  const counts = new Map();
+  for (const val of diceValues) {
+    counts.set(val, (counts.get(val) || 0) + 1);
+  }
+  return counts;
+}
+function calculateSumOfNumber(diceValues, targetNumber) {
+  return diceValues.filter(val => val === targetNumber).reduce((sum, val) => sum + val, 0);
+}
+function calculateChance(diceValues) {
+  return diceValues.reduce((sum, val) => sum + val, 0);
+}
+function calculateThreeOfAKind(diceValues, counts) {
+  for (const count of counts.values()) {
+    if (count >= 3) return calculateChance(diceValues);
+  }
+  return 0;
+}
+function calculateFourOfAKind(diceValues, counts) {
+  for (const count of counts.values()) {
+    if (count >= 4) return calculateChance(diceValues);
+  }
+  return 0;
+}
+function calculateFullHouse(counts) {
+  const values = Array.from(counts.values());
+  if ((values.includes(3) && values.includes(2)) || values.includes(5)) return 25;
+  return 0;
+}
+function calculateSmallStraight(diceValues) {
+  const uniqueDice = new Set(diceValues);
+  if (uniqueDice.has(1) && uniqueDice.has(2) && uniqueDice.has(3) && uniqueDice.has(4)) return 30;
+  if (uniqueDice.has(2) && uniqueDice.has(3) && uniqueDice.has(4) && uniqueDice.has(5)) return 30;
+  if (uniqueDice.has(3) && uniqueDice.has(4) && uniqueDice.has(5) && uniqueDice.has(6)) return 30;
+  return 0;
+}
+function calculateLargeStraight(diceValues) {
+  const uniqueDice = new Set(diceValues);
+  if (uniqueDice.has(1) && uniqueDice.has(2) && uniqueDice.has(3) && uniqueDice.has(4) && uniqueDice.has(5)) return 40;
+  if (uniqueDice.has(2) && uniqueDice.has(3) && uniqueDice.has(4) && uniqueDice.has(5) && uniqueDice.has(6)) return 40;
+  return 0;
+}
+function calculateKniffel(counts) {
+  if (Array.from(counts.values()).includes(5)) return 50;
+  return 0;
+}
+function generateRandomRolls(count) {
+  const rolls = [];
+  for (let i = 0; i < count; i++) {
+    rolls.push(Math.floor(Math.random() * 6) + 1);
+  }
+  return rolls;
+}
+
 // Hilfsfunktion zum Senden des aktuellen Status an alle
 function broadcastOlympiadeStatus() {
     // Nur relevante Daten senden, nicht z.B. socketId
@@ -81,6 +212,15 @@ function broadcastOlympiadeStatus() {
     };
   io.emit('olympiadeStatusUpdate', statusToSend);
   console.log("Broadcast Olympiade Status:", statusToSend);
+}
+
+function broadcastKniffelState() {
+  // Wir senden den Zustand an jeden Spieler, der im Spiel ist
+  for (const player of activeKniffelGame.players) {
+    // 'io.to(socketId)' sendet nur an diesen einen Socket
+    io.to(player.socketId).emit('kniffel:stateUpdate', activeKniffelGame);
+  }
+  console.log("Broadcast Kniffel Status an " + activeKniffelGame.players.length + " Spieler.");
 }
 
 const dbPath = path.join(__dirname, 'benana.db');
@@ -380,8 +520,6 @@ socket.on('endOlympiade', () => {
   broadcastOlympiadeStatus();
 });
 
-
-  // --- Neue Events ---
   socket.on('joinOlympiade', (userData) => {
     if (!activeOlympiade.isActive) {
       return socket.emit('olympiadeError', { message: 'Keine aktive Olympiade zum Beitreten.' });
@@ -400,8 +538,6 @@ socket.on('endOlympiade', () => {
       console.log(`Spieler ${userData.username} (ID: ${userData.userId}) ist beigetreten.`);
       broadcastOlympiadeStatus(); // Spielerliste an alle senden
     } else {
-        // Optional: Dem Spieler mitteilen, dass er schon drin ist
-        // socket.emit('alreadyJoined');
         console.log(`Spieler ${userData.username} hat versucht, erneut beizutreten.`);
          // Sicherstellen, dass die Socket ID aktuell ist, falls der User sich neu verbunden hat
         const playerIndex = activeOlympiade.players.findIndex(p => p.userId === userData.userId);
@@ -411,23 +547,14 @@ socket.on('endOlympiade', () => {
     }
   });
 
-  // =================================================================
-  // HIER IST DIE WICHTIGE ÄNDERUNG
-  // =================================================================
   socket.on('selectNextGame', ({ type, gameId }) => { // type = 'manual' | 'random'
       if (!activeOlympiade.isActive || activeOlympiade.players.length < 1) { // Mindestens 1 Spieler
           return socket.emit('olympiadeError', { message: 'Olympiade nicht aktiv oder keine Spieler.' });
       }
-
-      // *** KORREKTUR 1: Prüfen, ob alle Spiele bereits *gespielt* wurden ***
-      // Verwendet results.length statt currentGameIndex
       if (activeOlympiade.results.length >= activeOlympiade.selectedGamesList.length) {
           console.log(`Fehler: selectNextGame obwohl results(${activeOlympiade.results.length}) >= games(${activeOlympiade.selectedGamesList.length})`);
           return socket.emit('olympiadeError', { message: 'Alle Spiele wurden bereits gespielt.' });
       }
-
-      // *** KORREKTUR 2: Prüfen, ob ein Spiel bereits ausgewählt wurde und auf Bewertung wartet ***
-      // Vergleicht currentGameIndex mit der Anzahl der Ergebnisse
       if (activeOlympiade.currentGameIndex > activeOlympiade.results.length) {
            console.log(`Fehler: selectNextGame obwohl index(${activeOlympiade.currentGameIndex}) > results(${activeOlympiade.results.length})`);
            return socket.emit('olympiadeError', { message: 'Das aktuelle Spiel muss erst bewertet werden.' });
@@ -435,13 +562,9 @@ socket.on('endOlympiade', () => {
 
       let nextGameIndex = -1;
       if (type === 'manual' && typeof gameId === 'number') {
-          // (Manuelle Logik bleibt gleich, ist aber anfällig für dieselben Fehler)
-          // Bessere manuelle Logik (optional):
-          // 1. Prüfen, ob gameId bereits in results vorhanden ist
           if (activeOlympiade.results.some(r => r.gameId === gameId)) {
              return socket.emit('olympiadeError', { message: 'Dieses Spiel wurde bereits gespielt.' });
           }
-          // 2. Index finden
           const potentialIndex = activeOlympiade.selectedGamesList.findIndex(g => g.id === gameId);
           if (potentialIndex > -1) {
               nextGameIndex = potentialIndex;
@@ -450,53 +573,41 @@ socket.on('endOlympiade', () => {
           }
 
       } else if (type === 'random') {
-          // *** KORREKTUR 3: Verfügbare Spiele basierend auf 'results', nicht auf 'currentGameIndex' filtern ***
           const playedGameIds = new Set(activeOlympiade.results.map(r => r.gameId));
           const availableGames = activeOlympiade.selectedGamesList.filter(game => !playedGameIds.has(game.id));
 
           if (availableGames.length > 0) {
              const randomGame = availableGames[Math.floor(Math.random() * availableGames.length)];
-             // Finde den *echten Index* dieses Spiels in der selectedGamesList
              nextGameIndex = activeOlympiade.selectedGamesList.findIndex(g => g.id === randomGame.id);
 
-             // --- Angepasste Glücksrad-Logik ---
              const targetGame = activeOlympiade.selectedGamesList[nextGameIndex];
-             const availableGamesForWheel = availableGames; // Die bereits gefilterte Liste
+             const availableGamesForWheel = availableGames;
 
-             // Sende das Ziel und die Liste für das Rad *sofort* an alle Clients
              console.log(`Sende spinTargetDetermined: target=${targetGame.id}, available=${availableGamesForWheel.length} Spiele`);
              io.emit('spinTargetDetermined', {
                targetGameId: targetGame.id,
                availableGames: availableGamesForWheel
              });
 
-             // Starte den Timeout, um den *offiziellen* Spielstatus erst nach der Animation zu aktualisieren
               setTimeout(() => {
                  activeOlympiade.currentGameIndex = nextGameIndex;
-                 broadcastOlympiadeStatus(); // Inklusive currentGameIndex
+                 broadcastOlympiadeStatus();
                  console.log(`Timeout abgelaufen: Setze currentGameIndex auf ${nextGameIndex}`);
-               }, 5200); // 5 Sekunden warten (entspricht Animationsdauer im Frontend)
-               return; // Wichtig: Beende hier, da der Status erst nach dem Timeout aktualisiert wird
+               }, 5200);
+               return;
            } else {
-             // Diese Bedingung sollte jetzt mit KORREKTUR 1 übereinstimmen
              return socket.emit('olympiadeError', { message: 'Keine Spiele mehr verfügbar.' });
           }
       } else {
           return socket.emit('olympiadeError', { message: 'Ungültige Spielauswahl.' });
       }
 
-      // Dieser Block wird nur noch für 'manual' erreicht (wenn KEIN Timeout verwendet wird)
       if (nextGameIndex > -1) {
           activeOlympiade.currentGameIndex = nextGameIndex;
           console.log(`Nächstes Spiel (Index ${activeOlympiade.currentGameIndex}): ${activeOlympiade.selectedGamesList[activeOlympiade.currentGameIndex]?.name}`);
-          // Beim manuellen Auswählen muss der Status sofort gesendet werden
           broadcastOlympiadeStatus();
       }
   });
-  // =================================================================
-  // ENDE DER ÄNDERUNG
-  // =================================================================
-
 
   socket.on('declareWinner', ({ winnerUserId }) => {
       if (!activeOlympiade.isActive || activeOlympiade.currentGameIndex < 0 || activeOlympiade.currentGameIndex >= activeOlympiade.selectedGamesList.length) {
@@ -549,14 +660,240 @@ socket.on('endOlympiade', () => {
       }
   });
 
+  socket.on('kniffel:joinGame', (userData) => {
+      if (!userData || typeof userData.userId !== 'number') return;
+      
+      const existingPlayer = activeKniffelGame.players.find(p => p.userId === userData.userId);
+
+      if (!existingPlayer) {
+        console.log(`Kniffel: Spieler ${userData.username} tritt bei.`);
+        activeKniffelGame.isActive = true;
+        // Spieler zur Liste hinzufügen
+        activeKniffelGame.players.push({
+          userId: userData.userId,
+          username: userData.username,
+          socketId: socket.id
+        });
+        
+        // Neues Scoreboard und Totals für diesen Spieler erstellen
+        activeKniffelGame.scoreboards[userData.userId] = createNewScoreboard();
+        activeKniffelGame.totalScores[userData.userId] = { upper: 0, bonus: 0, upperTotal: 0, lowerTotal: 0, grandTotal: 0 };
+        
+        // Ersten Spieler zum aktuellen Spieler machen
+        if (activeKniffelGame.players.length === 1) {
+          activeKniffelGame.currentPlayerSocketId = socket.id;
+        }
+      } else {
+        console.log(`Kniffel: Spieler ${userData.username} verbindet sich erneut.`);
+        // Spieler ist schon drin, nur Socket-ID aktualisieren (wichtig für Reconnect)
+        existingPlayer.socketId = socket.id;
+      }
+      
+      // Sende den aktuellen Zustand an ALLE Spieler
+      broadcastKniffelState();
+    });
+
+    socket.on('kniffel:rollDice', () => {
+      // Validierung: Nur der aktuelle Spieler darf würfeln
+      if (socket.id !== activeKniffelGame.currentPlayerSocketId) return;
+      if (activeKniffelGame.rollCount >= 3) return;
+
+      activeKniffelGame.rollCount++;
+      
+      let notation = '';
+      let allValues = [];
+      let newDiceState = [];
+
+      if (activeKniffelGame.rollCount === 1) {
+        // --- Erster Wurf ---
+        allValues = generateRandomRolls(5);
+        notation = `5d6@${allValues.join(',')}`;
+        // Alle Würfel sind neu und nicht gehalten
+        newDiceState = allValues.map(val => ({ die: { value: val }, isHeld: false }));
+
+      } else {
+        // --- Zweiter oder dritter Wurf ---
+        const heldDice = activeKniffelGame.currentDice.filter(kd => kd.isHeld);
+        const heldValues = heldDice.map(kd => kd.die.value);
+        
+        const newRollsCount = 5 - heldDice.length;
+        if (newRollsCount === 0) {
+           // Sollte nicht passieren, da Button gesperrt ist, aber sicher ist sicher
+           activeKniffelGame.rollCount--;
+           return;
+        }
+
+        const newValues = generateRandomRolls(newRollsCount);
+        allValues = [...heldValues, ...newValues];
+        notation = `5d6@${allValues.join(',')}`;
+
+        // Wir müssen den 'isHeld'-Status korrekt wiederherstellen (Logik von V15 'updateLocalDiceState')
+        const heldDicePool = [...heldDice]; // Kopie der gehaltenen Würfel
+        newDiceState = allValues.map(val => {
+            // Versuche, einen gehaltenen Würfel mit diesem Wert zu finden
+            const heldMatchIndex = heldDicePool.findIndex(hd => hd.die.value === val);
+            if (heldMatchIndex > -1) {
+                // Ja, das ist einer unserer gehaltenen Würfel.
+                // Entferne ihn aus dem Pool, damit er nicht doppelt verwendet wird.
+                return heldDicePool.splice(heldMatchIndex, 1)[0];
+            } else {
+                // Nein, das ist ein neuer Würfel.
+                return { die: { value: val }, isHeld: false };
+            }
+        });
+      }
+
+      // Sortiere den finalen Würfelstatus für konsistente Anzeige
+      newDiceState.sort((a, b) => a.die.value - b.die.value);
+
+      // Aktualisiere den Server-Zustand
+      activeKniffelGame.lastRollNotation = notation;
+      activeKniffelGame.currentDice = newDiceState;
+      
+      // Potenzielle Punkte für den aktuellen Spieler neu berechnen
+      const currentPlayer = activeKniffelGame.players.find(p => p.socketId === socket.id);
+      if (!currentPlayer) return;
+      
+      const scoreboard = activeKniffelGame.scoreboards[currentPlayer.userId];
+      updatePotentialScores(scoreboard, allValues);
+      
+      // Nach dem 3. Wurf alle Würfel sperren
+      if (activeKniffelGame.rollCount === 3) {
+        activeKniffelGame.currentDice.forEach(kd => kd.isHeld = true);
+      }
+
+      broadcastKniffelState();
+    });
+
+    socket.on('kniffel:toggleHold', (data) => {
+      // Validierung
+      if (socket.id !== activeKniffelGame.currentPlayerSocketId || data.index == null) return;
+      if (activeKniffelGame.rollCount === 0 || activeKniffelGame.rollCount === 3) return;
+
+      const die = activeKniffelGame.currentDice[data.index];
+      if (die) {
+        die.isHeld = !die.isHeld;
+        // Sende nur ein kleines Update an alle
+        broadcastKniffelState();
+      }
+    });
+
+    socket.on('kniffel:selectScore', (data) => {
+      // Validierung
+      if (socket.id !== activeKniffelGame.currentPlayerSocketId || !data.rowId) return;
+      if (activeKniffelGame.rollCount === 0) return;
+
+      const currentPlayer = activeKniffelGame.players.find(p => p.socketId === socket.id);
+      if (!currentPlayer) return;
+
+      const scoreboard = activeKniffelGame.scoreboards[currentPlayer.userId];
+      const row = scoreboard.find(r => r.id === data.rowId);
+
+      if (!row || row.isSet) {
+        console.log("Fehler: Zeile bereits gesetzt oder nicht gefunden.");
+        return; // Zeile schon gesetzt oder ungültig
+      }
+
+      // 1. Punkte eintragen
+      row.score = row.potentialScore;
+      row.isSet = true;
+      console.log(`Kniffel: ${currentPlayer.username} trägt ${row.score} für ${row.name} ein.`);
+
+      // 2. Gesamtpunktzahl neu berechnen
+      activeKniffelGame.totalScores[currentPlayer.userId] = calculateTotals(scoreboard);
+
+      // 3. Nächste Runde vorbereiten (Zustand zurücksetzen)
+      activeKniffelGame.rollCount = 0;
+      activeKniffelGame.currentDice = [];
+      activeKniffelGame.lastRollNotation = null;
+      // Setze alle potenziellen Scores für *diesen* Spieler zurück
+      scoreboard.forEach(r => r.potentialScore = 0);
+
+      // 4. Prüfen, ob das Spiel vorbei ist
+      const allDone = activeKniffelGame.players.every(p => 
+        activeKniffelGame.scoreboards[p.userId].every(r => r.isSet)
+      );
+      
+      if (allDone) {
+        console.log("Kniffel-Spiel beendet!");
+        activeKniffelGame.isActive = false;
+        activeKniffelGame.currentPlayerSocketId = null;
+        // (Hier könnte man Ergebnisse in der DB speichern)
+      } else {
+        // 5. Nächsten Spieler bestimmen
+        const currentIndex = activeKniffelGame.players.findIndex(p => p.socketId === socket.id);
+        const nextIndex = (currentIndex + 1) % activeKniffelGame.players.length;
+        activeKniffelGame.currentPlayerSocketId = activeKniffelGame.players[nextIndex].socketId;
+        console.log(`Kniffel: Nächster Spieler ist ${activeKniffelGame.players[nextIndex].username}.`);
+      }
+
+      // 6. Finalen Zustand der Runde an alle senden
+      broadcastKniffelState();
+    });
+
+    socket.on('kniffel:newGame', () => {
+      console.log("Kniffel: Neues Spiel wird gestartet.");
+      // Setze den Hauptzustand zurück
+      activeKniffelGame.isActive = true;
+      activeKniffelGame.currentDice = [];
+      activeKniffelGame.rollCount = 0;
+      activeKniffelGame.lastRollNotation = null;
+      
+      // Setze Scoreboards und Totals für alle Spieler zurück
+      activeKniffelGame.players.forEach(player => {
+        activeKniffelGame.scoreboards[player.userId] = createNewScoreboard();
+        activeKniffelGame.totalScores[player.userId] = { upper: 0, bonus: 0, upperTotal: 0, lowerTotal: 0, grandTotal: 0 };
+      });
+      
+      // Erster Spieler in der Liste beginnt
+      if (activeKniffelGame.players.length > 0) {
+        activeKniffelGame.currentPlayerSocketId = activeKniffelGame.players[0].socketId;
+      }
+
+      broadcastKniffelState();
+    });
+
   socket.on('disconnect', () => {
     console.log('Benutzer hat die Verbindung getrennt:', socket.id);
-    // Spieler aus der aktiven Olympiade entfernen
-    const playerIndex = activeOlympiade.players.findIndex(p => p.socketId === socket.id);
-    if (activeOlympiade.isActive && playerIndex > -1) {
-      const removedPlayer = activeOlympiade.players.splice(playerIndex, 1)[0];
+    
+    // --- Bestehende Olympiade-Logik ---
+    const olyPlayerIndex = activeOlympiade.players.findIndex(p => p.socketId === socket.id);
+    if (activeOlympiade.isActive && olyPlayerIndex > -1) {
+      const removedPlayer = activeOlympiade.players.splice(olyPlayerIndex, 1)[0];
       console.log(`Spieler ${removedPlayer.username} hat die Olympiade verlassen.`);
       broadcastOlympiadeStatus();
+    }
+    const kniffelPlayerIndex = activeKniffelGame.players.findIndex(p => p.socketId === socket.id);
+    if (activeKniffelGame.isActive && kniffelPlayerIndex > -1) {
+      const removedPlayer = activeKniffelGame.players.splice(kniffelPlayerIndex, 1)[0];
+      console.log(`Kniffel: Spieler ${removedPlayer.username} hat das Spiel verlassen.`);
+
+      // Aufräumen: Scoreboard und Totals dieses Spielers löschen
+      delete activeKniffelGame.scoreboards[removedPlayer.userId];
+      delete activeKniffelGame.totalScores[removedPlayer.userId];
+
+      // Prüfen, ob der Spieler dran war
+      if (socket.id === activeKniffelGame.currentPlayerSocketId) {
+        // Ja, war er. Nächsten Spieler bestimmen.
+        if (activeKniffelGame.players.length > 0) {
+          // Der 'nächste' Spieler ist jetzt der an der aktuellen Position (da der alte weg ist)
+          const nextIndex = kniffelPlayerIndex % activeKniffelGame.players.length;
+          activeKniffelGame.currentPlayerSocketId = activeKniffelGame.players[nextIndex].socketId;
+        } else {
+          // Letzter Spieler hat das Spiel verlassen
+          activeKniffelGame.currentPlayerSocketId = null;
+        }
+      }
+      
+      // Wenn keine Spieler mehr da sind, Spiel zurücksetzen
+      if (activeKniffelGame.players.length === 0) {
+        console.log("Kniffel: Letzter Spieler hat verlassen. Setze Spiel zurück.");
+        activeKniffelGame = { // (Zurück zum Standardzustand)
+          isActive: false, players: [], scoreboards: {}, totalScores: {},
+          currentPlayerSocketId: null, currentDice: [], rollCount: 0, lastRollNotation: null
+        };
+      }
+      broadcastKniffelState();
     }
   });
 });

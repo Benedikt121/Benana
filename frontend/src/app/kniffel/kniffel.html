@@ -1,19 +1,34 @@
-<div class="kniffel-layout">
+<div *ngIf="gameState" class="kniffel-layout">
   
   <div class="kniffel-container">
-    <div id="dice-box"></div>
+    
+    <div id="dice-box-background">
+      <div id="dice-box-physics"></div>
+    </div>
     <hr>
+
     <div class="controls">
-      <button (click)="rollDice()" [disabled]="rollCount >= 3 || isRolling">
-        Würfeln (Wurf {{ rollCount + 1 }})
+      <button (click)="rollDice()" 
+              [disabled]="!amICurrentPlayer || gameState.rollCount >= 3 || isRolling || isInitializing">
+        {{ isInitializing ? 'Lade Würfel...' : 'Würfeln (Wurf ' + (gameState.rollCount + 1) + ')' }}
       </button>
-      <button (click)="newGame()">
+      <button (click)="newGame()" [disabled]="isInitializing">
         Neues Spiel
       </button>
     </div>
-    <p>Klicke auf einen Würfel, um ihn zu halten.</p>
+
+    <p *ngIf="amICurrentPlayer && !isRolling">
+      Du bist am Zug.
+    </p>
+    <p *ngIf="!amICurrentPlayer && gameState.currentPlayerSocketId && !isRolling">
+      Warte auf {{ currentPlayerUsername }}...
+    </p>
+    <p *ngIf="isRolling">
+      Würfel rollen...
+    </p>
+
     <div class="dice-display">
-      <div *ngFor="let kd of dice; let i = index" 
+      <div *ngFor="let kd of gameState.currentDice; let i = index" 
            class="die-value"
            [class.held]="kd.isHeld"
            (click)="toggleHold(i)">
@@ -23,56 +38,76 @@
     </div>
   </div>
 
-  <div class="scoreboard-container">
-    <h3>Punkteblock</h3>
+  <div class="scoreboard-wrapper">
     
-    <div class="scoreboard-section">
-      <div *ngFor="let row of upperScoreboard" class="scoreboard-row" 
-           [class.is-set]="row.isSet"
-           [class.is-clickable]="!row.isSet && rollCount > 0"
-           (click)="selectScore(row.id)">
-        
-        <span class="row-name">{{ row.name }}</span>
-        <span class="row-score">
-          {{ row.isSet ? row.score : (rollCount > 0 ? row.potentialScore : '-') }}
-        </span>
-      </div>
-    </div>
-    
-    <div class="scoreboard-total-row">
-      <span class="row-name">Zwischensumme</span>
-      <span class="row-score">{{ totalScores.upper }}</span>
-    </div>
-    <div class="scoreboard-total-row">
-      <span class="row-name">Bonus (bei 63)</span>
-      <span class="row-score">{{ totalScores.bonus }}</span>
-    </div>
-    <div class="scoreboard-total-row final-total">
-      <span class="row-name">Summe Oben</span>
-      <span class="row-score">{{ totalScores.upperTotal }}</span>
-    </div>
-    
-    <div class="scoreboard-section">
-      <div *ngFor="let row of lowerScoreboard" class="scoreboard-row"
-           [class.is-set]="row.isSet"
-           [class.is-clickable]="!row.isSet && rollCount > 0"
-           (click)="selectScore(row.id)">
-        
-        <span class="row-name">{{ row.name }}</span>
-        <span class="row-score">
-          {{ row.isSet ? row.score : (rollCount > 0 ? row.potentialScore : '-') }}
-        </span>
-      </div>
-    </div>
+    <div *ngFor="let player of gameState.players" class="scoreboard-container"
+         [class.is-active-player]="player.socketId === gameState.currentPlayerSocketId">
+      
+      <h3>
+        {{ player.username }} 
+        <span *ngIf="player.userId === myUserId">(Du)</span>
+      </h3>
+      
+      <ng-container *ngIf="gameState.scoreboards[player.userId] as scoreboard">
+        <ng-container *ngIf="gameState.totalScores[player.userId] as totals">
 
-    <div class="scoreboard-total-row final-total">
-      <span class="row-name">Summe Unten</span>
-      <span class="row-score">{{ totalScores.lowerTotal }}</span>
-    </div>
-    <div class="scoreboard-total-row grand-total">
-      <span class="row-name">Gesamt</span>
-      <span class="row-score">{{ totalScores.grandTotal }}</span>
+          <div class="scoreboard-section">
+            <ng-container *ngFor="let row of scoreboard">
+              <div *ngIf="row.section === 'upper'" 
+                   class="scoreboard-row"
+                   [class.is-set]="row.isSet"
+                   [class.is-clickable]="!row.isSet && amICurrentPlayer && gameState.rollCount > 0"
+                   (click)="selectScore(row)">
+                
+                <span class="row-name">{{ row.name }}</span>
+                <span class="row-score">
+                  {{ row.isSet ? row.score : (amICurrentPlayer && gameState.rollCount > 0 ? row.potentialScore : '-') }}
+                </span>
+              </div>
+            </ng-container>
+          </div>
+          
+          <div class="scoreboard-total-row">
+            <span class="row-name">Zwischensumme</span>
+            <span class="row-score">{{ totals.upper }}</span>
+          </div>
+          <div class="scoreboard-total-row">
+            <span class="row-name">Bonus (bei 63)</span>
+            <span class="row-score">{{ totals.bonus }}</span>
+          </div>
+          <div class="scoreboard-total-row final-total">
+            <span class="row-name">Summe Oben</span>
+            <span class="row-score">{{ totals.upperTotal }}</span>
+          </div>
+          
+          <div class="scoreboard-section">
+            <ng-container *ngFor="let row of scoreboard">
+              <div *ngIf="row.section === 'lower'" 
+                   class="scoreboard-row"
+                   [class.is-set]="row.isSet"
+                   [class.is-clickable]="!row.isSet && amICurrentPlayer && gameState.rollCount > 0"
+                   (click)="selectScore(row)">
+                
+                <span class="row-name">{{ row.name }}</span>
+                <span class="row-score">
+                  {{ row.isSet ? row.score : (amICurrentPlayer && gameState.rollCount > 0 ? row.potentialScore : '-') }}
+                </span>
+              </div>
+            </ng-container>
+          </div>
+
+          <div class="scoreboard-total-row final-total">
+            <span class="row-name">Summe Unten</span>
+            <span class="row-score">{{ totals.lowerTotal }}</span>
+          </div>
+          
+          <div class="scoreboard-total-row grand-total">
+            <span class="row-name">Gesamt</span>
+            <span class="row-score">{{ totals.grandTotal }}</span>
+          </div>
+
+        </ng-container>
+      </ng-container>
     </div>
   </div>
-
 </div>

@@ -59,4 +59,8 @@ export class SocketService implements OnDestroy {
       console.log('Socket.IO Verbindung geschlossen.');
     }
   }
+
+  public getSocketId(): string | any {
+    return this.socket.id;
+  }
 }
