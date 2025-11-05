@@ -501,10 +501,11 @@ io.on('connection', (socket) => {
 
 socket.on('endOlympiade', () => {
   if (activeOlympiade.isActive) {
-    console.log(`Olympiade beendet via Socket ${socket.id}. Speichere Ergebnisse...`);
-    const olympiadeToSave = { ...activeOlympiade }; // Kopiere den aktuellen Zustand
-
-    db.serialize(() => {
+    
+    if (activeOlympiade.results.length === activeOlympiade.selectedGamesList.length) {
+      console.log(`Olympiade beendet via Socket ${socket.id}. Speichere Ergebnisse...`);
+      const olympiadeToSave = { ...activeOlympiade };
+      db.serialize(() => {
       const stmtOlympiade = db.prepare('INSERT INTO olympiades (game_ids) VALUES (?)');
       stmtOlympiade.run(olympiadeToSave.gameIds, function(err) {
         if (err) return console.error("Fehler beim Speichern der Olympiade:", err.message);
@@ -529,6 +530,9 @@ socket.on('endOlympiade', () => {
       });
       stmtOlympiade.finalize();
     });
+    } else {
+      console.log("Olympiade ohne Speichern beendet.")
+    }
   }
   activeOlympiade.isActive = false;
   activeOlympiade.gameIds = null;
