@@ -334,7 +334,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const avatarStroage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, 'uplaods/avatars/');
+    const uploadPath = path.join(__dirname, 'uploads/avatars/');
     fs.mkdirSync(uploadPath, { recursive: true });
     cb(null, uploadPath);
   },
@@ -349,7 +349,7 @@ const avatarStroage = multer.diskStorage({
 const uploadAvatar = multer({
   storage: avatarStroage,
   limits: {filesize: 5 * 1024 * 1024},
-  fileFilter: (req, file, cd) => {
+  fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
