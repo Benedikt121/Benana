@@ -142,14 +142,13 @@ export class Kniffel implements AfterViewInit {
       // Unterer Block
       { id: 'threeOfAKind', name: 'Dreierpasch', section: 'lower', score: null, potentialScore: 0, isSet: false },
       { id: 'fourOfAKind', name: 'Viererpasch', section: 'lower', score: null, potentialScore: 0, isSet: false },
-      { id: 'fullHouse', name: 'Full House', section: 'lower', score: null, potentialScore: 0, isSet: false },
+      { id: 'fullHouse', name: 'Full Maus', section: 'lower', score: null, potentialScore: 0, isSet: false },
       { id: 'smallStraight', name: 'Kleine Straße', section: 'lower', score: null, potentialScore: 0, isSet: false },
       { id: 'largeStraight', name: 'Große Straße', section: 'lower', score: null, potentialScore: 0, isSet: false },
       { id: 'kniffel', name: 'Kniffel', section: 'lower', score: null, potentialScore: 0, isSet: false },
       { id: 'chance', name: 'Chance', section: 'lower', score: null, potentialScore: 0, isSet: false },
     ];
     
-    // NEU (V10): Fülle die geteilten Listen
     this.upperScoreboard = this.scoreboard.filter(row => row.section === 'upper');
     this.lowerScoreboard = this.scoreboard.filter(row => row.section === 'lower');
 
@@ -159,7 +158,7 @@ export class Kniffel implements AfterViewInit {
 
   newGame(): void {
     this.rollCount = 0;
-    this.dice = []; // 'heldIndices' muss nicht mehr zurückgesetzt werden
+    this.dice = [];
     this.diceBox.clear(); 
     this.isRolling = false;
     console.log('Neues Spiel gestartet.');
@@ -183,7 +182,6 @@ export class Kniffel implements AfterViewInit {
       console.log(`Starte Wurf ${this.rollCount}...`);
 
       if (this.rollCount === 1) {
-        // 'heldIndices' muss nicht mehr zurückgesetzt werden
         this.isRolling = true; 
         await this.diceBox.roll('5dpip'); 
       } else {
@@ -219,62 +217,46 @@ export class Kniffel implements AfterViewInit {
   }
 
   public selectScore(rowId: string): void {
-    // Man kann nichts auswählen, wenn noch nicht gewürfelt wurde,
-    // während gewürfelt wird oder wenn keine Würfel da sind.
     if (this.rollCount === 0 || this.isRolling || this.dice.length === 0) {
       return;
     }
 
     const row = this.scoreboard.find(r => r.id === rowId);
 
-    // Zeile nicht gefunden oder bereits gesetzt? Nichts tun.
     if (!row || row.isSet) {
       return;
     }
 
-    // Punkte eintragen
     row.score = row.potentialScore;
     row.isSet = true;
 
     console.log(`Punkte eingetragen für ${row.name}: ${row.score}`);
 
-    // Gesamtpunktzahl neu berechnen
     this.calculateTotals();
 
-    // Nächste Runde vorbereiten
     this.nextRound();
   }
 
-  /**
-   * NEU: Bereitet die nächste Runde vor (setzt Würfel und Wurfzähler zurück).
-   */
   private nextRound(): void {
-    // Prüfen, ob das Spiel vorbei ist
     const allSet = this.scoreboard.every(r => r.isSet);
     if (allSet) {
       console.log('Spiel beendet! Gesamtpunktzahl:', this.totalScores.grandTotal);
-      // Alle Würfel auf "gehalten" setzen, um weitere Aktionen zu blockieren
       this.dice.forEach(kd => kd.isHeld = true);
-      this.rollCount = 3; // Verhindert weiteres Würfeln
-      this.isRolling = true; // Verhindert alles
+      this.rollCount = 3;
+      this.isRolling = true;
       this.cdr.detectChanges();
       return;
     }
 
-    // Spiel ist noch nicht vorbei, nächste Runde:
     this.rollCount = 0;
     this.dice = [];
     this.diceBox.clear();
     
-    // Setze alle potentialScores zurück
     this.scoreboard.forEach(r => r.potentialScore = 0);
     
     this.cdr.detectChanges();
   }
 
-  /**
-   * NEU: Berechnet alle Gesamtpunktzahlen neu.
-   */
   private calculateTotals(): void {
     let upperScore = 0;
     this.scoreboard
@@ -296,7 +278,6 @@ export class Kniffel implements AfterViewInit {
 
   private updatePotentialScores(): void {
     if (this.rollCount === 0 || this.dice.length === 0) {
-      // Setze alle potentialScores auf 0, wenn kein Wurf stattgefunden hat
       this.scoreboard.forEach(row => row.potentialScore = 0);
       return;
     }
@@ -379,7 +360,7 @@ export class Kniffel implements AfterViewInit {
   private calculateFourOfAKind(diceValues: number[], counts: Map<number, number>): number {
     for (const count of counts.values()) {
       if (count >= 4) {
-        return this.calculateChance(diceValues); // Summe aller Augen
+        return this.calculateChance(diceValues);
       }
     }
     return 0;
@@ -389,7 +370,7 @@ export class Kniffel implements AfterViewInit {
     const values = Array.from(counts.values());
     const hasThree = values.includes(3);
     const hasTwo = values.includes(2);
-    const hasFive = values.includes(5); // Ein Kniffel zählt auch als Full House
+    const hasFive = values.includes(5);
 
     if ((hasThree && hasTwo) || hasFive) {
       return 25;

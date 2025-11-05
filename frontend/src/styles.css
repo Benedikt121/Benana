@@ -74,6 +74,6 @@ html, body {
 }
 
 .dice-box-canvas {
-  width: 100% !important;
-  height: 100% !important;
+    width: 82% !important;
+    height: 82% !important;
 }
