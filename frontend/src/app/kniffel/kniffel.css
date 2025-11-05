@@ -32,8 +32,8 @@
 
 /* 2. NEUE REGEL: Für den inneren Physik-Container */
 #dice-box-physics {
-  width: 80%;  /* Passt zu den Rändern Ihres Bildes (z.B. 80%) */
-  height: 80%; /* Passt zu den Rändern Ihres Bildes (z.B. 80%) */
+  width: 82%;  /* Passt zu den Rändern Ihres Bildes (z.B. 80%) */
+  height: 82%; /* Passt zu den Rändern Ihres Bildes (z.B. 80%) */
 
   /* Optional: einen Umriss beim Debuggen anzeigen */
   /* border: 1px dashed red; */ 
