@@ -1,91 +1,116 @@
 .kniffel-layout {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: wrap; /* Lässt Blöcke auf Mobilgeräten umbrechen */
     gap: 20px;
+    justify-content: center; /* Zentriert die Blöcke, falls nebeneinander */
   }
-.kniffel-container {
-    flex: 2;
+
+  /* Linke Spalte (Würfel) */
+  .kniffel-container {
+    flex: 2; /* Nimmt mehr Platz ein */
+    min-width: 320px; /* Mindestbreite */
+    max-width: 500px; /* Maximalbreite */
+  }
+
+  /* Rechte Spalte (Scoreboards Wrapper) */
+  .scoreboard-wrapper {
+    flex: 3; /* Nimmt mehr Platz ein, wenn mehrere Spieler da sind */
+    display: flex;
+    flex-wrap: wrap; /* Lässt Scoreboards umbrechen */
+    gap: 15px;
     min-width: 300px;
   }
-.scoreboard-container {
-    flex: 1;
-    min-width: 250px;
+
+  /* Einzelner Scoreboard-Container */
+  .scoreboard-container {
+    flex: 1; /* Jeder Spielerblock wächst gleichmäßig */
+    min-width: 280px;
     font-family: Arial, sans-serif;
+    border: 2px solid transparent; /* Platzhalter für 'is-active-player' */
+    border-radius: 8px;
+    padding: 10px;
+    background-color: #fdfdfd;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
   }
 
-  /* Container für den Tray-Hintergrund UND den verkleinerten Canvas */
-#dice-box-background {
-  height: 30rem; 
-  width: 30rem; 
-  border: 1px solid #ccc;
-  min-height: 300px;
+  /* NEU: Hebt den Spieler hervor, der gerade dran ist */
+  .scoreboard-container.is-active-player {
+    border-color: #007bff;
+    box-shadow: 0 0 15px rgba(0,123,255,0.3);
+  }
 
-  background-image: url("/assets/textures/tray.png"); /* */
-  background-size: cover;
-  background-position: center;
+  /* 3D-Box (V16-Stil) */
+  #dice-box-background {
+    height: 30rem; 
+    width: 100%; 
+    border: 1px solid #ccc;
+    min-height: 300px;
+    background-image: url("/assets/textures/tray.png");
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  #dice-box-physics {
+    width: 80%;
+    height: 80%;
+  }
 
-  /* NEU: Zentriert den inneren Container (#dice-box-physics) */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* 2. NEUE REGEL: Für den inneren Physik-Container */
-#dice-box-physics {
-  width: 82%;  /* Passt zu den Rändern Ihres Bildes (z.B. 80%) */
-  height: 82%; /* Passt zu den Rändern Ihres Bildes (z.B. 80%) */
-
-  /* Optional: einen Umriss beim Debuggen anzeigen */
-  /* border: 1px dashed red; */ 
-}
-  /* ... (restliches CSS für Scoreboard, die-value, etc. bleibt gleich) ... */
-.scoreboard-row, .scoreboard-total-row {
+  .scoreboard-row, .scoreboard-total-row {
     display: flex;
     justify-content: space-between;
     padding: 8px;
     border-bottom: 1px solid #eee;
   }
-.scoreboard-row:hover.is-clickable {
-    background-color: #f4f4f4;
+  .scoreboard-row.is-clickable:hover {
+    background-color: #f0f8ff;
   }
-.scoreboard-row.is-clickable {
+  .scoreboard-row.is-clickable {
     cursor: pointer;
   }
-.scoreboard-row.is-set {
-    color: #333;
-    font-weight: bold;
+  .scoreboard-row.is-set {
+    color: #555;
+    background-color: #f9f9f9;
   }
-.scoreboard-row:not(.is-set) .row-score {
+  .scoreboard-row.is-set .row-score {
+    font-weight: bold;
+    color: #333;
+  }
+  .scoreboard-row:not(.is-set) .row-score {
     color: #007bff;
     font-weight: bold;
   }
-.row-name {
+  .row-name {
     text-align: left;
   }
-.row-score {
+  .row-score {
     text-align: right;
     min-width: 40px;
   }
-.scoreboard-total-row {
-    background-color: #f9f9f9;
+  .scoreboard-total-row {
+    background-color: #f0f0f0;
     font-weight: bold;
   }
-.scoreboard-total-row.final-total {
-    background-color: #e9e9e9;
+  .scoreboard-total-row.final-total {
+    background-color: #e0e0e0;
   }
-.scoreboard-total-row.grand-total {
+  .scoreboard-total-row.grand-total {
     background-color: #333;
     color: white;
     font-size: 1.2rem;
   }
-  
-.dice-display {
+
+  .dice-display {
     display: flex;
     gap: 10px;
     margin-top: 10px;
     flex-wrap: wrap;
+    justify-content: center;
   }
-.die-value {
+  .die-value {
     width: 60px;
     height: 60px;
     border: 2px solid #555;
@@ -98,20 +123,21 @@
     font-size: 24px;
     font-weight: bold;
     user-select: none;
+    background-color: white;
   }
-.die-value.held {
+  .die-value.held {
     background-color: #d1ecff;
     border-color: #007bff;
   }
-.die-value small {
+  .die-value small {
     font-size: 10px;
     font-weight: normal;
   }
-.controls {
+  .controls {
     margin: 15px 0;
     display: flex;
     gap: 10px;
   }
-button:disabled {
+  button:disabled {
     opacity: 0.5;
   }
