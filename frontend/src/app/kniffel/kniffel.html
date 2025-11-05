@@ -4,10 +4,11 @@
     <div id="dice-box"></div>
     <hr>
     <div class="controls">
-      <button (click)="rollDice()" [disabled]="rollCount >= 3 || isRolling">
-        Würfeln (Wurf {{ rollCount + 1 }})
+      <button (click)="rollDice()" 
+              [disabled]="rollCount >= 3 || isRolling || isInitializing">
+        {{ isInitializing ? 'Lade Würfel...' : 'Würfeln (Wurf ' + (rollCount + 1) + ')' }}
       </button>
-      <button (click)="newGame()">
+      <button (click)="newGame()" [disabled]="isInitializing">
         Neues Spiel
       </button>
     </div>

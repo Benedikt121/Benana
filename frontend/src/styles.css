@@ -73,7 +73,15 @@ html, body {
     }
 }
 
-.dice-box-canvas {
-    width: 82% !important;
-    height: 82% !important;
+#dice-box #scene-container {
+  /* Passt die Größe an den 'flex'-Container an (unser 80%-Trick) */
+  width: 82%;
+  height: 82%;
+  position: relative !important; /* Wichtig für die Positionierung */
+}
+
+#dice-box #scene-container canvas {
+  /* Zwingt den Canvas, den Container der Bibliothek auszufüllen */
+  width: 100% !important;
+  height: 100% !important;
 }
