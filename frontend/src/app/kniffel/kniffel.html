@@ -1,29 +1,78 @@
-<div class="kniffel-container">
+<div class="kniffel-layout">
   
-  <div id="dice-box"></div>
-
-  <hr>
-
-  <div class="controls">
-    <button (click)="rollDice()" [disabled]="rollCount >= 3 || isRolling">
-      Würfeln (Wurf {{ rollCount + 1 }})
-    </button>
-    <button (click)="newGame()">
-      Neues Spiel
-    </button>
+  <div class="kniffel-container">
+    <div id="dice-box"></div>
+    <hr>
+    <div class="controls">
+      <button (click)="rollDice()" [disabled]="rollCount >= 3 || isRolling">
+        Würfeln (Wurf {{ rollCount + 1 }})
+      </button>
+      <button (click)="newGame()">
+        Neues Spiel
+      </button>
+    </div>
+    <p>Klicke auf einen Würfel, um ihn zu halten.</p>
+    <div class="dice-display">
+      <div *ngFor="let kd of dice; let i = index" 
+           class="die-value"
+           [class.held]="kd.isHeld"
+           (click)="toggleHold(i)">
+        <span>{{ kd.die.value }}</span>
+        <small *ngIf="kd.isHeld">Gehalten</small>
+      </div>
+    </div>
   </div>
 
-  <p>Klicke auf einen Würfel, um ihn zu halten.</p>
-  <div class="dice-display">
+  <div class="scoreboard-container">
+    <h3>Punkteblock</h3>
     
-    <div *ngFor="let kd of dice; let i = index" 
-         class="die-value"
-         [class.held]="kd.isHeld"
-         (click)="toggleHold(i)">
-      
-      <span>{{ kd.die.value }}</span>
-      
-      <small *ngIf="kd.isHeld">Gehalten</small>
+    <div class="scoreboard-section">
+      <div *ngFor="let row of upperScoreboard" class="scoreboard-row" 
+           [class.is-set]="row.isSet"
+           [class.is-clickable]="!row.isSet && rollCount > 0"
+           (click)="selectScore(row.id)">
+        
+        <span class="row-name">{{ row.name }}</span>
+        <span class="row-score">
+          {{ row.isSet ? row.score : (rollCount > 0 ? row.potentialScore : '-') }}
+        </span>
+      </div>
     </div>
+    
+    <div class="scoreboard-total-row">
+      <span class="row-name">Zwischensumme</span>
+      <span class="row-score">{{ totalScores.upper }}</span>
     </div>
+    <div class="scoreboard-total-row">
+      <span class="row-name">Bonus (bei 63)</span>
+      <span class="row-score">{{ totalScores.bonus }}</span>
+    </div>
+    <div class="scoreboard-total-row final-total">
+      <span class="row-name">Summe Oben</span>
+      <span class="row-score">{{ totalScores.upperTotal }}</span>
+    </div>
+    
+    <div class="scoreboard-section">
+      <div *ngFor="let row of lowerScoreboard" class="scoreboard-row"
+           [class.is-set]="row.isSet"
+           [class.is-clickable]="!row.isSet && rollCount > 0"
+           (click)="selectScore(row.id)">
+        
+        <span class="row-name">{{ row.name }}</span>
+        <span class="row-score">
+          {{ row.isSet ? row.score : (rollCount > 0 ? row.potentialScore : '-') }}
+        </span>
+      </div>
+    </div>
+
+    <div class="scoreboard-total-row final-total">
+      <span class="row-name">Summe Unten</span>
+      <span class="row-score">{{ totalScores.lowerTotal }}</span>
+    </div>
+    <div class="scoreboard-total-row grand-total">
+      <span class="row-name">Gesamt</span>
+      <span class="row-score">{{ totalScores.grandTotal }}</span>
+    </div>
+  </div>
+
 </div>
