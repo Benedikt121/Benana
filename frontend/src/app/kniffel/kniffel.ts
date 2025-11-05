@@ -164,6 +164,7 @@ export class Kniffel implements AfterViewInit {
     this.isRolling = false;
     console.log('Neues Spiel gestartet.');
     this.cdr.detectChanges();
+    this.initializeScoreboard();
   }
 
   async rollDice(): Promise<void> {
