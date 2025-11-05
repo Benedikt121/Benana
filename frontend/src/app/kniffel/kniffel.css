@@ -14,22 +14,30 @@
   }
 
   /* Container für den Tray-Hintergrund UND den verkleinerten Canvas */
-#dice-box {
-    height: 30rem; 
-    width: 30rem; 
-    border: 1px solid #ccc;
-    min-height: 300px;
-    
-    background-image: url("/tray.png");
-    background-size: cover;
-    background-position: center;
+#dice-box-background {
+  height: 30rem; 
+  width: 30rem; 
+  border: 1px solid #ccc;
+  min-height: 300px;
 
-    /* Zentriert den kleineren Canvas */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
+  background-image: url("/assets/textures/tray.png"); /* */
+  background-size: cover;
+  background-position: center;
 
+  /* NEU: Zentriert den inneren Container (#dice-box-physics) */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 2. NEUE REGEL: Für den inneren Physik-Container */
+#dice-box-physics {
+  width: 80%;  /* Passt zu den Rändern Ihres Bildes (z.B. 80%) */
+  height: 80%; /* Passt zu den Rändern Ihres Bildes (z.B. 80%) */
+
+  /* Optional: einen Umriss beim Debuggen anzeigen */
+  /* border: 1px dashed red; */ 
+}
   /* ... (restliches CSS für Scoreboard, die-value, etc. bleibt gleich) ... */
 .scoreboard-row, .scoreboard-total-row {
     display: flex;

@@ -73,15 +73,14 @@ html, body {
     }
 }
 
-#dice-box #scene-container {
-  /* Passt die Größe an den 'flex'-Container an (unser 80%-Trick) */
-  width: 82%;
-  height: 82%;
-  position: relative !important; /* Wichtig für die Positionierung */
-}
-
-#dice-box #scene-container canvas {
-  /* Zwingt den Canvas, den Container der Bibliothek auszufüllen */
+#dice-box-physics #scene-container {
   width: 100% !important;
   height: 100% !important;
+  position: relative !important;
+}
+
+#dice-box-physics canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
 }
