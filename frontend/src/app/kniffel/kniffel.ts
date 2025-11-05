@@ -1,10 +1,11 @@
 // frontend/src/app/kniffel/kniffel.ts
 
-import { Component, AfterViewInit, ChangeDetectorRef, OnDestroy } from '@angular/core'; 
+import { Component, AfterViewInit, ChangeDetectorRef, OnDestroy, signal, inject } from '@angular/core'; 
 import { CommonModule } from '@angular/common'; // RouterOutlet entfernt (NG8113)
 //@ts-ignore
 import DiceBox from '@3d-dice/dice-box-threejs';
-import { Subscription } from 'rxjs';
+import { Subscription, take } from 'rxjs';
+import { Router } from '@angular/router';
 
 import { 
   KniffelStateService, 
@@ -26,8 +27,8 @@ export class Kniffel implements AfterViewInit, OnDestroy {
   public isRolling: boolean = false;
   
   public isInitializing: boolean = true; 
-  
-  // NEU: Flag, um die einmalige Initialisierung der Box zu steuern
+  public isSaving = signal(false);
+
   private diceBoxInitialized: boolean = false; 
 
   public gameState: KniffelGameState | null = null;
@@ -37,6 +38,8 @@ export class Kniffel implements AfterViewInit, OnDestroy {
   private stateSubscription: Subscription | null = null;
   private lastProcessedNotation: string | null = null; 
 
+  private router = inject(Router);
+
   constructor(
     private cdr: ChangeDetectorRef,
     public kniffelState: KniffelStateService,
@@ -45,7 +48,6 @@ export class Kniffel implements AfterViewInit, OnDestroy {
     this.myUserId = this.authService.currentUser()?.userId || null;
   }
 
-  // KORREKTUR: 'currentPlayerUsername' Getter hinzugefügt (NG5002)
   public get currentPlayerUsername(): string {
     if (!this.gameState || !this.gameState.currentPlayerSocketId) {
       return 'jemanden'; // Fallback
@@ -130,13 +132,10 @@ export class Kniffel implements AfterViewInit, OnDestroy {
     if (!this.amICurrentPlayer || (this.gameState && this.gameState.rollCount >= 3) || this.isRolling || this.isInitializing) {
       return;
     }
-    this.isRolling = true; // UI sofort sperren
-    this.kniffelState.rollDice(); // Server, bitte würfeln!
+    this.isRolling = true;
+    this.kniffelState.rollDice();
   }
 
-  /**
-   * Wird aufgerufen, wenn der Spieler auf einen Würfel klickt.
-   */
   toggleHold(index: number): void {
     if (!this.amICurrentPlayer || (this.gameState && this.gameState.rollCount === 0) || this.isRolling || this.isInitializing) {
       return;
@@ -144,9 +143,6 @@ export class Kniffel implements AfterViewInit, OnDestroy {
     this.kniffelState.toggleHold(index);
   }
 
-  /**
-   * Wird aufgerufen, wenn der Spieler eine Zeile im Scoreboard auswählt.
-   */
   selectScore(row: ScoreboardRow): void {
     if (!this.amICurrentPlayer || row.isSet || (this.gameState && this.gameState.rollCount === 0) || this.isRolling || this.isInitializing) {
       return;
@@ -154,11 +150,20 @@ export class Kniffel implements AfterViewInit, OnDestroy {
     this.kniffelState.selectScore(row.id);
   }
 
-  /**
-   * Wird aufgerufen, wenn der Spieler auf "Neues Spiel" klickt.
-   */
   newGame(): void {
     if (this.isInitializing) return;
     this.kniffelState.newGame();
+  }
+
+  saveGameAndExit(): void {
+    if (this.isSaving()) return;
+    this.isSaving.set(true);
+
+    this.kniffelState.kniffelGameSaved$.pipe(
+      take(1)
+    ).subscribe(() => {
+      this.router.navigate(['/']);
+    });
+    this.kniffelState.saveGame();
   }
 }

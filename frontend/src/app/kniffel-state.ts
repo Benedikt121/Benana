@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { SocketService } from './socket'; //
 import { AuthService } from './auth'; //
 
@@ -40,10 +40,17 @@ export class KniffelStateService {
   
   readonly kniffelState$ = this._kniffelState.asObservable();
 
+  private readonly _kniffelGameSaved = new Subject<void>();
+  readonly kniffelGameSaved$ = this._kniffelGameSaved.asObservable();
+
   constructor(private socketService: SocketService, private authService: AuthService) {
     this.socketService.listen<KniffelGameState>('kniffel:stateUpdate').subscribe((data) => {
       this._kniffelState.next(data);
     });
+
+    this.socketService.listen<void>('kniffel:gameSaved').subscribe(() => {
+      this._kniffelGameSaved.next();
+    })
   }
 
   joinGame() {
@@ -70,6 +77,10 @@ export class KniffelStateService {
 
   newGame() {
     this.socketService.emit('kniffel:newGame');
+  }
+  
+  saveGame() {
+    this.socketService.emit('kniffel:saveGame');
   }
 
   public getMySocketId(): string {

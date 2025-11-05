@@ -7,15 +7,25 @@
     </div>
     <hr>
 
-    <div class="controls">
-      <button (click)="rollDice()" 
-              [disabled]="!amICurrentPlayer || gameState.rollCount >= 3 || isRolling || isInitializing">
-        {{ isInitializing ? 'Lade Würfel...' : 'Würfeln (Wurf ' + (gameState.rollCount + 1) + ')' }}
-      </button>
-      <button (click)="newGame()" [disabled]="isInitializing">
-        Neues Spiel
-      </button>
-    </div>
+<div class="controls">
+  <button *ngIf="gameState.isActive" 
+          (click)="rollDice()" 
+          [disabled]="!amICurrentPlayer || gameState.rollCount >= 3 || isRolling || isInitializing">
+    {{ isInitializing ? 'Lade Würfel...' : 'Würfeln (Wurf ' + (gameState.rollCount + 1) + ')' }}
+  </button>
+
+  <button *ngIf="gameState.isActive || gameState.players.length === 0" 
+          (click)="newGame()" 
+          [disabled]="isInitializing">
+    Neues Spiel
+  </button>
+
+  <button *ngIf="!gameState.isActive && gameState.players.length > 0" 
+          (click)="saveGameAndExit()" 
+          [disabled]="isSaving()">
+    {{ isSaving() ? 'Speichere...' : 'Spiel speichern & Beenden' }}
+  </button>
+</div>
 
     <p *ngIf="amICurrentPlayer && !isRolling">
       Du bist am Zug.

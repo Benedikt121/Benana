@@ -298,6 +298,26 @@ const db = new sqlite3.Database(dbPath, (err) => {
           else console.log('Tabelle "olympiade_results" ist bereit.');
         });
       });
+
+    db.run(`CREATE TABLE IF NOT EXISTS kniffel_games (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT DEFAULT CURRENT_TIMESTAMP
+    )`, (err) => {
+      if (err) console.error('Fehler beim Erstellen der Tabelle "kniffel_games":', err.message);
+      else console.log('Tabelle "kniffel_games" ist bereit.');
+    });
+
+    db.run(`CREATE TABLE IF NOT EXISTS kniffel_scores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      game_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      grand_total INTEGER NOT NULL,
+      FOREIGN KEY (game_id) REFERENCES kniffel_games (id),
+      FOREIGN KEY (user_id) REFERENCES users (id)  
+    )`, (err) => {
+      if (err) console.error('Fehler beim erstellen der Tabelle "kniffel_scores": ', err.message);
+      else console.log('Tabelle "kniffel_scores" erfolgreich erstellt.')
+    });
   }
 });
 
@@ -852,6 +872,52 @@ socket.on('endOlympiade', () => {
 
       broadcastKniffelState();
     });
+
+socket.on('kniffel:saveGame', () => {
+  // Nur beendete Spiele speichern
+  if (activeKniffelGame.isActive || activeKniffelGame.players.length === 0) {
+    console.error("Kniffel: Versuch, ein aktives oder leeres Spiel zu speichern.");
+    return;
+  }
+
+  console.log("Kniffel: Spiel wird gespeichert...");
+  const gameToSave = { ...activeKniffelGame };
+
+  db.serialize(() => {
+    // Schritt 1: Das Spiel-Objekt erstellen, um eine game_id zu erhalten
+    db.run('INSERT INTO kniffel_games (date) VALUES (CURRENT_TIMESTAMP)', function(err) {
+      if (err) {
+        console.error("Fehler beim Erstellen des kniffel_games Eintrags:", err.message);
+        return;
+      }
+
+      const gameId = this.lastID;
+      console.log(`Kniffel-Spiel ${gameId} gespeichert.`);
+
+      // Schritt 2: Die Scores für jeden Spieler mit der neuen game_id speichern
+      const stmt = db.prepare('INSERT INTO kniffel_scores (game_id, user_id, grand_total) VALUES (?, ?, ?)');
+      for (const player of gameToSave.players) {
+        const totalScore = gameToSave.totalScores[player.userId]?.grandTotal ?? 0;
+        stmt.run(gameId, player.userId, totalScore, (errP) => {
+           if(errP) console.error(`Fehler beim Speichern von Kniffel-Score für User ${player.userId}:`, errP.message);
+        });
+      }
+      stmt.finalize((errF) => {
+         if(errF) console.error("Fehler beim Finalisieren der Score-Einträge:", errF.message);
+         else console.log(`Alle Scores für Kniffel-Spiel ${gameId} gespeichert.`);
+      });
+
+      // Schritt 3: Spielstatus auf dem Server zurücksetzen
+      activeKniffelGame = {
+        isActive: false, players: [], scoreboards: {}, totalScores: {},
+        currentPlayerSocketId: null, currentDice: [], rollCount: 0, lastRollNotation: null
+      };
+
+      // Schritt 4: Client bestätigen, dass gespeichert wurde
+      socket.emit('kniffel:gameSaved');
+    });
+  });
+});
 
   socket.on('disconnect', () => {
     console.log('Benutzer hat die Verbindung getrennt:', socket.id);
