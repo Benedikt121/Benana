@@ -15,6 +15,6 @@
 
     <div>
         <a *ngIf="!authService.isLoggedIn()"  routerLink="/login">Login</a>
-        <a *ngIf="authService.isLoggedIn()" (click)="logout()" href="#">Logout ({{ authService.getUsername() }})</a>
+        <a *ngIf="authService.isLoggedIn()" [routerLink]="['/profil', authService.getUserId()]">Profil ({{ authService.getUsername() }})</a>
     </div>
 </div>

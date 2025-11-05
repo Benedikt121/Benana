@@ -423,6 +423,58 @@ app.post('/api/login', async (req, res) => { // Die Hauptfunktion ist async
   }
 });
 
+app.get('/api/profile/:id', async (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+  if (isNaN(userId)) {
+    return res.status(400).json({error: "Ungültige User-ID."});
+  }
+
+  const dbAll = (sql, params) => {
+    return new Promise((resolve, reject) => {
+      db.all(sql, params, (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows);
+      });
+    });
+  };
+
+  const dbGet = (sql, params) => {
+     return new Promise((resolve, reject) => {
+       db.get(sql, params, (err, row) => {
+         if (err) return reject(err);
+         resolve(row);
+       });
+     });
+  };
+
+  try {
+    // 1. Benutzerdaten abrufen
+    const user = await dbGet('SELECT id, username FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
+    }
+
+    // 2. Alle Spielverläufe parallel abrufen
+    const [olympiadeHistory, kniffelHistory] = await Promise.all([
+      dbAll('SELECT * FROM olympiade_players WHERE user_id = ? ORDER BY id DESC', [userId]),
+      dbAll('SELECT * FROM kniffel_scores WHERE user_id = ? ORDER BY id DESC', [userId])
+    ]);
+
+    // 3. Alles zusammen als JSON senden
+    res.status(200).json({
+      userId: user.id,
+      username: user.username,
+      olympiadeHistory,
+      kniffelHistory
+    });
+
+  } catch (error) {
+    console.error(`Fehler beim Abrufen von Profil ${userId}:`, error.message);
+    res.status(500).json({ error: 'Interner Serverfehler.' });
+  }
+});
+
+
 app.get('/api/games', (req, res) => {
   const sql = 'SELECT * FROM games ORDER BY name ASC';
   db.all(sql, [], (err, rows) => {

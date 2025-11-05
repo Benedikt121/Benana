@@ -1,0 +1,41 @@
+<div class="profile-container">
+  
+  <div *ngIf="errorMessage()" class="error-message">
+    {{ errorMessage() }}
+  </div>
+
+  <div *ngIf="!errorMessage()">
+    <h2>{{ username() }}</h2>
+
+    <div *ngIf="owner()" class="owner-controls">
+      <a (click)="logout()" href="#" class="logout-button">Ausloggen</a>
+    </div>
+
+    <hr>
+
+    <div class="history-section">
+      <h3>Olympiade-Verlauf</h3>
+      <ul *ngIf="olympiadeHistory().length > 0; else noOlyHistory">
+        <li *ngFor="let game of olympiadeHistory()">
+          Olympiade #{{ game.olympiade_id }}: {{ game.final_score }} Punkte
+        </li>
+      </ul>
+      <ng-template #noOlyHistory>
+        <p>{{ username() }} hat noch an keiner Olympiade teilgenommen.</p>
+      </ng-template>
+    </div>
+
+    <div class="history-section">
+      <h3>Kniffel-Verlauf</h3>
+      <ul *ngIf="kniffelHistory().length > 0; else noKniffelHistory">
+        <li *ngFor="let game of kniffelHistory()">
+          Spiel #{{ game.game_id }}: {{ game.grand_total }} Punkte
+        </li>
+      </ul>
+      <ng-template #noKniffelHistory>
+        <p>{{ username() }} hat noch kein Kniffel-Spiel beendet.</p>
+      </ng-template>
+    </div>
+
+  </div>
+</div>
