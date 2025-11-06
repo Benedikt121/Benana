@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, WritableSignal, Signal } from '@angular/core';
+import { Component, inject, signal, computed, WritableSignal, Signal, OnDestroy, AfterViewInit, ElementRef, viewChild, effect } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth';
 import { HttpClient } from '@angular/common/http';
@@ -6,6 +6,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { COLORSETS } from '../dice-themes.const';
 import { TEXTURELIST } from '../dice-textures.const';
+// @ts-ignore
+import DiceBox from '@3d-dice/dice-box-threejs';
 
 // Interfaces für die empfangenen Daten
 interface OlympiadeHistory {
@@ -38,7 +40,7 @@ interface ProfileData {
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })
-export class Profile {
+export class Profile implements OnDestroy, AfterViewInit {
 
 
   private authService = inject(AuthService);
@@ -55,7 +57,7 @@ export class Profile {
   kniffelHistory: WritableSignal<KniffelHistory[]> = signal([]);
   errorMessage: WritableSignal<string | null> = signal(null);
   uploadMessage: WritableSignal<string | null> = signal(null);
-  diceConfig: WritableSignal<any> = signal(this.createDefaultDiceConfig());
+  diceConfig: WritableSignal<any> = signal(null);
 
   private createDefaultDiceConfig() {
     return { 
@@ -76,6 +78,10 @@ export class Profile {
     return this.userId() > 0 && this.userId() === this.authService.getUserId();
   });
 
+  dicePreviewBox = viewChild<ElementRef<HTMLDivElement>>('dicePreviewBox');
+  public diceBoxInstance: any = null;
+  private isDiceBoxInitialized: boolean = false;
+
   constructor() {
     this.route.params.subscribe(params => {
       const id = parseInt(params['id'], 10);
@@ -87,6 +93,31 @@ export class Profile {
       this.fetchProfileData(id);
       this.createDefaultDiceConfig();
     });
+
+    effect(() => {
+      const config = this.diceConfig();
+      if (config && this.isDiceBoxInitialized) {
+        this.updateDiceBoxPreview(config);
+      }
+    });
+  }
+
+  ngAfterViewInit(): void {
+    // Wir rufen die Initialisierung hier auf, aber sie wartet intern
+    // darauf, dass die diceConfig geladen wird.
+    this.initializeDiceBox();
+  }
+
+  ngOnDestroy(): void {
+    if (this.diceBoxInstance && typeof this.diceBoxInstance.remove === 'function') {
+      try {
+        this.diceBoxInstance.remove();
+        console.log("DiceBox-Vorschau entfernt.");
+      } catch (e) {
+        console.error("Fehler beim Entfernen der DiceBox-Instanz:", e);
+      }
+      this.diceBoxInstance = null;
+    }
   }
 
   fetchProfileData(id: number) {
@@ -98,16 +129,9 @@ export class Profile {
         this.personalColor.set(data.personalColor || '#FFFFFF');
         this.olympiadeHistory.set(data.olympiadeHistory);
         this.kniffelHistory.set(data.kniffelHistory);
+        this.diceConfig.set(data.dice_config);
 
-        if (data.dice_config) {
-          try {
-            this.diceConfig.set(JSON.parse(data.dice_config));
-          } catch (e) {
-            console.error("Fehler beim Parsen der dice_config:", e);
-          }
-        } else {
-          this.diceConfig.set(this.createDefaultDiceConfig());
-        }
+        this.initializeDiceBox();
       },
       error: (err) => {
         console.error("Fehler beim Abrufen der Profildaten:", err);
@@ -246,5 +270,78 @@ export class Profile {
           this.uploadMessage.set(err.error?.error || 'Speichern fehlgeschlagen.');
         }
       });
+  }
+
+  private async initializeDiceBox() {
+    const container = this.dicePreviewBox()?.nativeElement;
+    const config = this.diceConfig();
+
+    // Verhindern, dass die Funktion ausgeführt wird, bevor alles bereit ist
+    if (!container || !config || this.isDiceBoxInitialized) {
+      return;
+    }
+
+    this.isDiceBoxInitialized = true;
+    console.log("Initialisiere DiceBox-Vorschau...");
+
+    try {
+      const previewConfig: any = {
+        assetPath: "/assets/",
+        sounds: false,
+        shadows: true,
+        baseScale: 80,
+        light_intensity: 1.0,
+        gravity_multiplier: 400,
+        strength: 1.5,
+        isInteractive: false // Keine Interaktion für die Vorschau
+      };
+
+      // Benutzerkonfiguration anwenden
+      previewConfig.theme_material = config.theme_material;
+      previewConfig.theme_texture = config.theme_texture;
+      if (config.theme_customColorset) {
+        previewConfig.theme_colorset = null;
+        previewConfig.theme_customColorset = config.theme_customColorset;
+      } else {
+        previewConfig.theme_colorset = config.theme_colorset;
+        previewConfig.theme_customColorset = null;
+      }
+      
+      this.diceBoxInstance = new DiceBox("#dice-preview-box", previewConfig);
+      await this.diceBoxInstance.initialize();
+      this.diceBoxInstance.roll("1d6"); // Einen Würfel zur Vorschau rollen
+
+    } catch (e) {
+      console.error("Fehler beim Initialisieren der DiceBox-Vorschau:", e);
+      this.isDiceBoxInitialized = false; // Zurücksetzen, damit es erneut versucht werden kann
+    }
+  }
+
+  private updateDiceBoxPreview(config: any) {
+    if (!this.diceBoxInstance) {
+      this.initializeDiceBox();
+      return;
+    }
+    
+    const configUpdate: any = {
+      theme_material: config.theme_material || 'plastic',
+      theme_texture: config.theme_texture || 'marble'
+    };
+    if (config.theme_customColorset) {
+      configUpdate.theme_colorset = null;
+      configUpdate.theme_customColorset = config.theme_customColorset;
+    } else {
+      configUpdate.theme_colorset = config.theme_colorset || 'pinkdreams';
+      configUpdate.theme_customColorset = null;
+    }
+    
+    this.diceBoxInstance.updateConfig(configUpdate);
+    this.rerollPreview(); // Änderung durch Neuwürfeln anzeigen
+  }
+
+  rerollPreview() {
+    if (this.diceBoxInstance) {
+      this.diceBoxInstance.roll("1d6");
+    }
   }
 }

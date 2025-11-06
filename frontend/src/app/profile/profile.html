@@ -81,6 +81,18 @@
 
     <hr>
 
+    <div class="dice-preview-section">
+    <h3>Aktuelles Würfel-Design</h3>
+    
+    <div #dicePreviewBox id="dice-preview-box">
+      </div>
+    
+    <button (click)="rerollPreview()" *ngIf="diceBoxInstance" class="preview-roll-btn">
+      Vorschau neu würfeln
+    </button>
+  </div>
+  <hr>
+
     <div class="history-section">
       <h3>Olympiade-Verlauf</h3>
       <ul *ngIf="olympiadeHistory().length > 0; else noOlyHistory">

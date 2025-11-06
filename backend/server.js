@@ -592,7 +592,7 @@ app.put('/api/profile/:id/dice-config', (req, res) => {
   const { config } = req.body;
 
   if (!config) {
-    return res.status(400),json({ error: 'Konfigurationsobjekt fehlt.' });
+    return res.status(400).json({ error: 'Konfigurationsobjekt fehlt.' });
   }
 
   try {

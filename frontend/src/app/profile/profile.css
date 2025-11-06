@@ -15,3 +15,15 @@
   height: 100%;
   object-fit: cover; /* Stellt sicher, dass das Bild den Kreis füllt */
 }
+
+:host ::ng-deep #dice-preview-box canvas {
+    width: 10rem !important;
+    height: 10rem !important;
+    display: block !important;
+}
+
+#dice-preview-box {
+  width: 10rem !important;
+    height: 10rem !important;
+    display: block !important;
+}
