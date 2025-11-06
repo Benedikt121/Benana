@@ -504,7 +504,7 @@ app.get('/api/profile/:id', async (req, res) => {
 
   try {
     // 1. Benutzerdaten abrufen
-    const user = await dbGet('SELECT id, username, avatar_url, personal_color FROM users WHERE id = ?', [userId]);
+    const user = await dbGet('SELECT id, username, avatar_url, personal_color, dice_config FROM users WHERE id = ?', [userId]);
       if (!user) {
         return res.status(404).json({ error: 'Benutzer nicht gefunden.' });
       }

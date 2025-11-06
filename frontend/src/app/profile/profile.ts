@@ -142,18 +142,24 @@ export class Profile implements OnDestroy {
         this.personalColor.set(data.personalColor || '#FFFFFF');
         this.olympiadeHistory.set(data.olympiadeHistory);
         this.kniffelHistory.set(data.kniffelHistory);
-        this.diceConfig.set(data.dice_config);
 
-        const currentConfigStr = JSON.stringify(this.diceConfig());
-        if (data.dice_config && data.dice_config !== currentConfigStr) {
+        const defaultConfig = this.createDefaultDiceConfig();
+        let loadedConfig: any = null;
+
+        if (data.dice_config) {
           try {
-            this.diceConfig.set(JSON.parse(data.dice_config));
+            loadedConfig = JSON.parse(data.dice_config);
           } catch (e) {
-            this.diceConfig.set(this.createDefaultDiceConfig());
+            console.error("Fehler beim Parsen der dice_config, verwende Standard.", e);
+            loadedConfig = defaultConfig;
           }
-        } else if (!data.dice_config) {
-          this.diceConfig.set(this.createDefaultDiceConfig());
+        } else {
+          loadedConfig = defaultConfig;
         }
+
+        const finalConfig = { ...defaultConfig, ...loadedConfig };
+
+        this.diceConfig.set(finalConfig);
       },
       error: (err) => {
         console.error("Fehler beim Abrufen der Profildaten:", err);
