@@ -4,6 +4,7 @@ import { isPlatformBrowser } from '@angular/common';
 interface User {
   userId: number;
   username: string;
+  dice_config?: any;
 }
 
 const USER_STORAGE_KEY = 'currentUserData';
@@ -64,5 +65,21 @@ export class AuthService {
 
   getUserId(): number | null {
       return this.currentUser()?.userId ?? null;
+  }
+
+
+  updateDiceConfig(newConfig: any) {
+    const currentUser = this.currentUser();
+    if (currentUser) {
+      const updatedUser = { ...currentUser, dice_config: newConfig };
+      this.currentUser.set(updatedUser);
+      if (this.isBrowser) {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
+      }
+    }
+  }
+
+  getDiceConfig(): any | null {
+      return this.currentUser()?.dice_config ?? null;
   }
 }

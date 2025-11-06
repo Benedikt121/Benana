@@ -34,19 +34,20 @@ export class Login {
       return;
     }
 
-    this.http.post<{ message: string, userId: number, username: string }>('/api/login', this.loginData).subscribe({
+    this.http.post<{ message: string, userId: number, username: string, dice_config: any }>('/api/login', this.loginData).subscribe({
       next: (response: any) => {
         this.successMessage = 'Erfolgreich eingeloggt!';
         console.log('Login erfolgreich:', response);
 
         this.authService.login({
           userId: response.userId,
-          username: response.username
+          username: response.username,
+          dice_config: response.dice_config
         });
 
         setTimeout(() => {
           this.router.navigate(['/']);
-        }, 1000);
+        }, 500);
       },
       
       error: (error) => {

@@ -236,7 +236,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       avatar_url TEXT,
-      personal_color TEXT DEFAULT '#FFFFFF'
+      personal_color TEXT DEFAULT '#FFFFFF',
+      dice_config TEXT DEFAULT '{"theme_colorset":"pinkdreams", "theme_texture":"marble", "theme_material":"plastic"}'
     )`, (err) => {
       if (err) {
         console.error('Fehler beim Erstellen der Tabelle "users":', err.message);
@@ -430,7 +431,8 @@ app.post('/api/login', async (req, res) => { // Die Hauptfunktion ist async
       return res.status(200).json({
         message: 'Login erfolgreich.',
         userId: user.id,
-        username: user.username
+        username: user.username,
+        dice_config: user.dice_config ? JSON.parse(user.dice_config) : null
       });
     } else {
       console.log(`Ungültiger Loginversuch (falsches Passwort) für Benutzer: ${username}`);
@@ -496,8 +498,9 @@ app.get('/api/profile/:id', async (req, res) => {
     res.status(200).json({
     userId: user.id,
     username: user.username,
-    avatarUrl: user.avatar_url, // <-- NEU
-    personalColor: user.personal_color, // <-- NEU
+    avatarUrl: user.avatar_url,
+    personalColor: user.personal_color,
+    dice_config: user.dice_config,
     olympiadeHistory,
     kniffelHistory
   });
@@ -561,6 +564,34 @@ app.put('/api/profile/:id/color', (req, res) => {
       personalColor: color 
     });
   });
+});
+
+app.put('/api/profile/:id/dice-config', (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+  const { config } = req.body;
+
+  if (!config) {
+    return res.status(400),json({ error: 'Konfigurationsobjekt fehlt.' });
+  }
+
+  try {
+    const configString = JSON.stringify(config);
+    const sql = 'UPDATE users SET dice_config = ? WHERE id = ?';
+
+    db.run(sql, [configString, userId], function(err) {
+      if (err) {
+        console.log("DB-Fehler beim speichern der Würfel-Konfiguration: ", err.message);
+        return res.status(500).json({ error: 'Konfiguration konnte nicht gespeichert werden.' });
+      }
+      console.log(`Würfel-Konfiguration für den User ${userId} aktualisiert.`);
+      res.status(200).json({
+        message: 'Würfeldesign erfolgreich gespeichert.',
+        dice_config: config
+      });
+    });
+  } catch (e) {
+    res.status(400).json({ error: 'Ungültiges Konfigurationsobjekt.' });
+  }
 });
 
 

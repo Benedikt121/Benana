@@ -3,6 +3,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { COLORSETS } from '../dice-themes.const';
+import { TEXTURELIST } from '../dice-textures.const';
 
 // Interfaces für die empfangenen Daten
 interface OlympiadeHistory {
@@ -23,6 +26,7 @@ interface ProfileData {
   username: string;
   avatarUrl: string | null;
   personalColor: string;
+  dice_config: string | null;
   olympiadeHistory: OlympiadeHistory[];
   kniffelHistory: KniffelHistory[];
 }
@@ -30,11 +34,12 @@ interface ProfileData {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })
 export class Profile {
+
 
   private authService = inject(AuthService);
   private http = inject(HttpClient);
@@ -50,6 +55,21 @@ export class Profile {
   kniffelHistory: WritableSignal<KniffelHistory[]> = signal([]);
   errorMessage: WritableSignal<string | null> = signal(null);
   uploadMessage: WritableSignal<string | null> = signal(null);
+  diceConfig: WritableSignal<any> = signal(this.createDefaultDiceConfig());
+
+  private createDefaultDiceConfig() {
+    return { 
+      theme_colorset: 'pinkdreams', 
+      theme_texture: 'marble', 
+      theme_material: 'plastic', 
+      theme_customColorset: null 
+    };
+  }
+
+  public colorsets = COLORSETS;
+  public texturelist = TEXTURELIST;
+  public colorsetKeys = Object.keys(this.colorsets);
+  public textureKeys = Object.keys(this.texturelist).filter(key => key !== '');
 
   // "owner" wird ein 'computed' Signal
   owner: Signal<boolean> = computed(() => {
@@ -65,6 +85,7 @@ export class Profile {
       }
       this.userId.set(id);
       this.fetchProfileData(id);
+      this.createDefaultDiceConfig();
     });
   }
 
@@ -77,6 +98,16 @@ export class Profile {
         this.personalColor.set(data.personalColor || '#FFFFFF');
         this.olympiadeHistory.set(data.olympiadeHistory);
         this.kniffelHistory.set(data.kniffelHistory);
+
+        if (data.dice_config) {
+          try {
+            this.diceConfig.set(JSON.parse(data.dice_config));
+          } catch (e) {
+            console.error("Fehler beim Parsen der dice_config:", e);
+          }
+        } else {
+          this.diceConfig.set(this.createDefaultDiceConfig());
+        }
       },
       error: (err) => {
         console.error("Fehler beim Abrufen der Profildaten:", err);
@@ -138,5 +169,82 @@ export class Profile {
   logout() {
     this.authService.logout();
     this.router.navigate(['/']);
+  }
+
+  onThemeChange(event: Event) {
+    const themeKey = (event.target as HTMLSelectElement).value;
+    if (themeKey === 'custom') {
+      // Auf "custom" gesetzt, wir löschen das Preset, behalten aber den Rest
+      this.diceConfig.update(config => ({
+        ...config,
+        theme_colorset: null,
+        // (theme_customColorset bleibt erhalten)
+      }));
+    } else {
+      // Ein Preset wurde gewählt
+      const theme = this.colorsets[themeKey];
+      this.diceConfig.set({
+        ...this.diceConfig(), // Behält z.B. eine bereits gewählte Textur, falls das Theme keine vorgibt
+        theme_colorset: themeKey,
+        theme_texture: theme.texture || this.diceConfig()?.theme_texture || 'none',
+        theme_material: theme.material || 'plastic',
+        theme_customColorset: null // Benutzerdefinierte Farben löschen
+      });
+    }
+  }
+
+  onTextureChange(event: Event) {
+    const textureKey = (event.target as HTMLSelectElement).value;
+    const texture = this.texturelist[textureKey];
+
+    this.diceConfig.update(config => ({
+      ...config,
+      theme_texture: textureKey,
+      // Material aktualisieren, falls die Textur eines vorschlägt
+      theme_material: texture.material || config.theme_material || 'plastic' 
+    }));
+  }
+
+  onCustomColorChange(event: Event) {
+    const color = (event.target as HTMLInputElement).value;
+
+    this.diceConfig.update(config => ({
+      ...config,
+      theme_colorset: null, // Preset-Auswahl aufheben
+      theme_customColorset: {
+        background: color,
+        foreground: '#FFFFFF', // Standard-Vordergrund (könnte auch konfigurierbar gemacht werden)
+        texture: config.theme_texture, // Aktuelle Textur beibehalten
+        material: config.theme_material // Aktuelles Material beibehalten
+      }
+    }));
+  }
+
+  getCustomBgColor(): string {
+    const config = this.diceConfig();
+    if (config?.theme_customColorset?.background) {
+      // Stellt sicher, dass es kein Array ist (wie bei manchen Presets)
+      const bg = config.theme_customColorset.background;
+      return Array.isArray(bg) ? bg[0] : bg;
+    }
+    return '#FFFFFF'; // Standard-Fallback
+  }
+
+  saveDiceConfig() {
+    this.uploadMessage.set("Speichere Würfel-Design...");
+    const configToSave = this.diceConfig();
+
+    this.http.put<{ message: string, dice_config: any }>(`/api/profile/${this.userId()}/dice-config`, { config: configToSave })
+      .subscribe({
+        next: (res) => {
+          this.uploadMessage.set(res.message);
+          // WICHTIG: Die Konfiguration auch im lokalen AuthService aktualisieren!
+          this.authService.updateDiceConfig(res.dice_config);
+        },
+        error: (err) => {
+          console.error("Fehler beim Speichern der Würfel-Konfiguration:", err);
+          this.uploadMessage.set(err.error?.error || 'Speichern fehlgeschlagen.');
+        }
+      });
   }
 }

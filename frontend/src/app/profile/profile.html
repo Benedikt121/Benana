@@ -33,6 +33,49 @@
       
       <hr class="owner-hr">
 
+      <h4>Kniffel-Würfel anpassen</h4>
+
+      <div class="form-group">
+        <label for="dice-theme">Design-Preset:</label>
+        <select id="dice-theme" (change)="onThemeChange($event)">
+          <option value="custom" [selected]="!diceConfig()?.theme_colorset">
+            -- Benutzerdefiniert --
+          </option>
+          <option *ngFor="let key of colorsetKeys" [value]="key" [selected]="key === diceConfig()?.theme_colorset">
+            {{ colorsets[key].name }} ({{ colorsets[key].category }})
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="dice-texture">Textur:</label>
+        <select id="dice-texture" 
+                [ngModel]="diceConfig()?.theme_texture || 'none'" 
+                (ngModelChange)="onTextureChange($event)">
+          <option *ngFor="let key of textureKeys" [value]="key">
+            {{ texturelist[key].name }}
+          </option>
+          <option value="none">Keine Textur</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="dice-color-bg">Eigene Hintergrundfarbe:</label>
+        <input id="dice-color-bg" 
+              type="color" 
+              [value]="getCustomBgColor()" 
+              (change)="onCustomColorChange($event)">
+        <small>(Setzt Preset auf "Benutzerdefiniert")</small>
+      </div>
+
+      <button (click)="saveDiceConfig()" class="save-dice-btn">Würfel-Design speichern</button>
+
+      <div *ngIf="uploadMessage()" class="upload-message">
+        {{ uploadMessage() }}
+      </div>
+
+      <hr class="owner-hr">
+
       <a (click)="logout()" href="#" class="logout-button">Ausloggen</a>
     </div>
 

@@ -72,7 +72,7 @@ export class Kniffel implements AfterViewInit, OnDestroy {
         await Promise.resolve();
         
         try {
-          this.diceBox = new DiceBox("#dice-box-physics", { //
+          const defaultConfig = {
             assetPath: "/assets/",
             sounds: true,
             volume: 30,
@@ -84,8 +84,30 @@ export class Kniffel implements AfterViewInit, OnDestroy {
             shadows: true,
             baseScale: 70,
             light_intensity: 1.0,
-            gravity_multiplier: 600
-          });
+            gravity_multiplier: 600,
+            theme_customColorset: null
+            };
+
+          const userConfig = this.authService.getDiceConfig();
+          
+          let finalConfig = { ...defaultConfig };
+
+          if (userConfig) {
+            finalConfig.theme_material = userConfig.theme_material || defaultConfig.theme_material;
+            finalConfig.theme_texture = userConfig.theme_texture || defaultConfig.theme_texture;
+
+            if (userConfig.theme_customColorset) {
+              finalConfig.theme_colorset = '';
+              finalConfig.theme_customColorset = userConfig.theme_customColorset;
+            } else if (userConfig.theme_colorset) {
+              finalConfig.theme_colorset = userConfig.theme_colorset;
+              finalConfig.theme_customColorset = null;
+            }
+          }
+
+          console.log("Lade DiceBox mit Konfiguration: ", finalConfig);
+
+          this.diceBox = new DiceBox("#dice-box-physics", finalConfig);
 
           await this.diceBox.initialize(); 
           
