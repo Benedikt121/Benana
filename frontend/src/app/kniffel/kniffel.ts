@@ -30,6 +30,7 @@ export class Kniffel implements AfterViewInit, OnDestroy {
   public isSaving = signal(false);
 
   private diceBoxInitialized: boolean = false; 
+  private currentDiceThemeSocketId: string | null = null;
 
   public gameState: KniffelGameState | null = null;
   public amICurrentPlayer: boolean = false;
@@ -62,6 +63,7 @@ export class Kniffel implements AfterViewInit, OnDestroy {
 
     this.stateSubscription = this.kniffelState.kniffelState$.subscribe(async (state) => {
 
+      const oldState = this.gameState;
       this.gameState = state;
       
       if (state && !this.diceBoxInitialized) {
@@ -73,46 +75,29 @@ export class Kniffel implements AfterViewInit, OnDestroy {
         
         try {
           const defaultConfig = {
-            assetPath: "/assets/",
-            sounds: true,
-            volume: 30,
-            sound_dieMaterial: 'plastic',
-            theme_material: "plastic",
-            theme_colorset: 'pinkdreams',
-            theme_texture: 'marble',
-            strength: 2.5,
-            shadows: true,
-            baseScale: 70,
-            light_intensity: 1.0,
-            gravity_multiplier: 600,
-            theme_customColorset: null
-            };
+                    assetPath: "/assets/",
+                    sounds: true,
+                    volume: 30,
+                    sound_dieMaterial: 'plastic',
+                    theme_material: "plastic",
+                    theme_colorset: 'pinkdreams', // Dein Standard
+                    theme_texture: 'marble',
+                    strength: 2.5,
+                    shadows: true,
+                    baseScale: 70,
+                    light_intensity: 1.0,
+                    gravity_multiplier: 600,
+                    theme_customColorset: null
+                };
 
-          const userConfig = this.authService.getDiceConfig();
-          
-          let finalConfig = { ...defaultConfig };
+                console.log("Lade DiceBox mit initialem Standard-Design:", defaultConfig);
+                this.diceBox = new DiceBox("#dice-box-physics", defaultConfig);
+                await this.diceBox.initialize(); 
+                
+                console.log('Dice Box (ThreeJS) ist initialisiert und bereit.');
+                this.isInitializing = false;
 
-          if (userConfig) {
-            finalConfig.theme_material = userConfig.theme_material || defaultConfig.theme_material;
-            finalConfig.theme_texture = userConfig.theme_texture || defaultConfig.theme_texture;
-
-            if (userConfig.theme_customColorset) {
-              finalConfig.theme_colorset = '';
-              finalConfig.theme_customColorset = userConfig.theme_customColorset;
-            } else if (userConfig.theme_colorset) {
-              finalConfig.theme_colorset = userConfig.theme_colorset;
-              finalConfig.theme_customColorset = null;
-            }
-          }
-
-          console.log("Lade DiceBox mit Konfiguration: ", finalConfig);
-
-          this.diceBox = new DiceBox("#dice-box-physics", finalConfig);
-
-          await this.diceBox.initialize(); 
-          
-          console.log('Dice Box (ThreeJS) ist initialisiert und bereit.');
-          this.isInitializing = false;
+                this.updateDiceTheme(state);
         
         } catch (e) {
           console.error("Fehler beim Initialisieren der DiceBox:", e);
@@ -121,6 +106,11 @@ export class Kniffel implements AfterViewInit, OnDestroy {
 
       } else if (state && this.diceBoxInitialized) {
         this.amICurrentPlayer = state.currentPlayerSocketId === this.kniffelState.getMySocketId();
+
+        if (oldState?.currentPlayerSocketId !== state.currentPlayerSocketId) {
+                console.log("Spieler hat gewechselt, aktualisiere Würfel-Theme...");
+                this.updateDiceTheme(state); // <--- NEUE FUNKTION aufrufen
+            }
         
         if (state.lastRollNotation && state.lastRollNotation !== this.lastProcessedNotation) {
           console.log(`Spiele deterministischen Wurf ab: ${state.lastRollNotation}`);
@@ -143,6 +133,56 @@ export class Kniffel implements AfterViewInit, OnDestroy {
     });
 
     this.kniffelState.joinGame();
+  }
+
+  private updateDiceTheme(state: KniffelGameState | null) {
+      if (!state || !state.currentPlayerSocketId || !this.diceBox) {
+          return; // Nichts zu tun, wenn Spiel noch nicht bereit ist
+      }
+
+      // Verhindern, dass das Theme unnötig neu geladen wird, wenn derselbe Spieler dranbleibt
+      if (state.currentPlayerSocketId === this.currentDiceThemeSocketId) {
+          return;
+      }
+
+      const currentPlayer = state.players.find(p => p.socketId === state.currentPlayerSocketId);
+      
+      let configUpdate: any = {};
+
+      if (currentPlayer && currentPlayer.diceConfig) {
+          const userConfig = currentPlayer.diceConfig;
+          
+          configUpdate = {
+              theme_material: userConfig.theme_material || 'plastic',
+              theme_texture: userConfig.theme_texture || 'marble'
+          };
+
+          if (userConfig.theme_customColorset) {
+              configUpdate.theme_colorset = null;
+              configUpdate.theme_customColorset = userConfig.theme_customColorset;
+          } else if (userConfig.theme_colorset) {
+              configUpdate.theme_colorset = userConfig.theme_colorset;
+              configUpdate.theme_customColorset = null;
+          } else {
+              // Fallback, falls die Config des Spielers ungültig ist
+              configUpdate.theme_colorset = 'pinkdreams';
+              configUpdate.theme_customColorset = null;
+          }
+          console.log(`Aktualisiere Würfel-Design für ${currentPlayer.username}:`, configUpdate);
+
+      } else {
+          // Fallback, falls der Spieler (aus irgendeinem Grund) keine Config hat
+          console.warn("Aktiver Spieler hat keine Würfel-Konfiguration, verwende Standard.");
+          configUpdate = {
+              theme_colorset: 'pinkdreams',
+              theme_customColorset: null,
+              theme_texture: 'marble',
+              theme_material: 'plastic'
+          };
+      }
+      
+      this.diceBox.updateConfig(configUpdate);
+      this.currentDiceThemeSocketId = state.currentPlayerSocketId; // Socket-ID des aktuellen Themes merken
   }
 
 

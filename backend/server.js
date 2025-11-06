@@ -217,10 +217,31 @@ function broadcastOlympiadeStatus() {
 }
 
 function broadcastKniffelState() {
-  // Wir senden den Zustand an jeden Spieler, der im Spiel ist
+  
+  // Erstelle ein "sauberes" State-Objekt, das nur die nötigen Daten enthält.
+  // Dies stellt sicher, dass alle Eigenschaften (wie diceConfig) korrekt kopiert werden.
+  const clientState = {
+    isActive: activeKniffelGame.isActive,
+    players: activeKniffelGame.players.map(player => {
+      // Explizit die Daten auswählen, die der Client sehen soll
+      return {
+        userId: player.userId,
+        username: player.username,
+        socketId: player.socketId, // Wird vom Client für die "Wer ist dran?"-Logik benötigt
+        diceConfig: player.diceConfig // Die Konfiguration explizit mitsenden!
+      };
+    }),
+    scoreboards: activeKniffelGame.scoreboards,
+    totalScores: activeKniffelGame.totalScores,
+    currentPlayerSocketId: activeKniffelGame.currentPlayerSocketId,
+    currentDice: activeKniffelGame.currentDice,
+    rollCount: activeKniffelGame.rollCount,
+    lastRollNotation: activeKniffelGame.lastRollNotation
+  };
+
+  // Sende den neuen, sauberen Status an alle Spieler
   for (const player of activeKniffelGame.players) {
-    // 'io.to(socketId)' sendet nur an diesen einen Socket
-    io.to(player.socketId).emit('kniffel:stateUpdate', activeKniffelGame);
+    io.to(player.socketId).emit('kniffel:stateUpdate', clientState);
   }
   console.log("Broadcast Kniffel Status an " + activeKniffelGame.players.length + " Spieler.");
 }
@@ -856,37 +877,61 @@ socket.on('endOlympiade', () => {
       }
   });
 
-  socket.on('kniffel:joinGame', (userData) => {
+  const loadConfig = async (userId) => {
+        try {
+          const user = await new Promise((resolve, reject) => {
+            db.get('SELECT dice_config FROM users WHERE id = ?', [userId], (err, row) => {
+              if (err) return reject(err);
+              resolve(row);
+            });
+          });
+
+          if (user && user.dice_config) {
+            console.log(`[Debug] Config für User ${userId} geladen: ${user.dice_config}`);
+            return JSON.parse(user.dice_config);
+          } else {
+            console.log(`[Debug] Keine Config für User ${userId} gefunden, verwende Fallback.`);
+          }
+        } catch (e) {
+          console.error("[Debug] Fehler beim Laden/Parsen der dice_config für User " + userId, e);
+        }
+        // Fallback
+        return {"theme_colorset":"pinkdreams", "theme_texture":"marble", "theme_material":"plastic"};
+    };
+
+  socket.on('kniffel:joinGame', async (userData) => {
       if (!userData || typeof userData.userId !== 'number') return;
       
       const existingPlayer = activeKniffelGame.players.find(p => p.userId === userData.userId);
 
       if (!existingPlayer) {
         console.log(`Kniffel: Spieler ${userData.username} tritt bei.`);
+        
+        const userConfig = await loadConfig(userData.userId); 
+        
+        console.log("[Debug] userConfig-Objekt, das gepusht wird:", userConfig);
+
         activeKniffelGame.isActive = true;
-        // Spieler zur Liste hinzufügen
         activeKniffelGame.players.push({
           userId: userData.userId,
           username: userData.username,
-          socketId: socket.id
+          socketId: socket.id,
+          diceConfig: userConfig
         });
         
-        // Neues Scoreboard und Totals für diesen Spieler erstellen
         activeKniffelGame.scoreboards[userData.userId] = createNewScoreboard();
         activeKniffelGame.totalScores[userData.userId] = { upper: 0, bonus: 0, upperTotal: 0, lowerTotal: 0, grandTotal: 0 };
         
-        // Ersten Spieler zum aktuellen Spieler machen
         if (activeKniffelGame.players.length === 1) {
           activeKniffelGame.currentPlayerSocketId = socket.id;
         }
       } else {
         console.log(`Kniffel: Spieler ${userData.username} verbindet sich erneut.`);
-        // Spieler ist schon drin, nur Socket-ID aktualisieren (wichtig für Reconnect)
         existingPlayer.socketId = socket.id;
+        existingPlayer.diceConfig = await loadConfig(userData.userId);
       }
       
-      // Sende den aktuellen Zustand an ALLE Spieler
-      broadcastKniffelState();
+      broadcastKniffelState(); 
     });
 
     socket.on('kniffel:rollDice', () => {
