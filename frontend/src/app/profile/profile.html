@@ -37,11 +37,10 @@
 
       <div class="form-group">
         <label for="dice-theme">Design-Preset:</label>
-        <select id="dice-theme" (change)="onThemeChange($event)">
-          <option value="custom" [selected]="!diceConfig()?.theme_colorset">
-            -- Benutzerdefiniert --
-          </option>
-          <option *ngFor="let key of colorsetKeys" [value]="key" [selected]="key === diceConfig()?.theme_colorset">
+        
+        <select id="dice-theme" [value]="selectedThemeKey()" (change)="onThemeChange($event)">
+          <option value="custom">-- Benutzerdefiniert --</option>
+          <option *ngFor="let key of colorsetKeys" [value]="key">
             {{ colorsets[key].name }} ({{ colorsets[key].category }})
           </option>
         </select>
@@ -49,9 +48,10 @@
 
       <div class="form-group">
         <label for="dice-texture">Textur:</label>
+
         <select id="dice-texture" 
-                [ngModel]="diceConfig()?.theme_texture || 'none'" 
-                (ngModelChange)="onTextureChange($event)">
+                [value]="diceConfig()?.theme_texture || 'none'" 
+                (change)="onTextureChange($event)">
           <option *ngFor="let key of textureKeys" [value]="key">
             {{ texturelist[key].name }}
           </option>
@@ -81,13 +81,13 @@
 
     <hr>
 
-    <div class="dice-preview-section">
+  <div class="dice-preview-section">
     <h3>Aktuelles Würfel-Design</h3>
     
     <div #dicePreviewBox id="dice-preview-box">
       </div>
     
-    <button (click)="rerollPreview()" *ngIf="diceBoxInstance" class="preview-roll-btn">
+    <button (click)="rerollPreview()" *ngIf="isDiceBoxInitialized" class="preview-roll-btn">
       Vorschau neu würfeln
     </button>
   </div>

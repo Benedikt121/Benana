@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, WritableSignal, Signal, OnDestroy, AfterViewInit, ElementRef, viewChild, effect } from '@angular/core';
+import { Component, inject, signal, computed, WritableSignal, Signal, OnDestroy, AfterViewInit, ElementRef, viewChild, effect, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth';
 import { HttpClient } from '@angular/common/http';
@@ -40,13 +40,13 @@ interface ProfileData {
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })
-export class Profile implements OnDestroy, AfterViewInit {
-
+export class Profile implements OnDestroy {
 
   private authService = inject(AuthService);
   private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private cdr = inject(ChangeDetectorRef);
 
   // Signale für die Ansicht
   userId: WritableSignal<number> = signal(0);
@@ -80,14 +80,16 @@ export class Profile implements OnDestroy, AfterViewInit {
 
   dicePreviewBox = viewChild<ElementRef<HTMLDivElement>>('dicePreviewBox');
   public diceBoxInstance: any = null;
-  private isDiceBoxInitialized: boolean = false;
+  public isDiceBoxInitialized: WritableSignal<any> = signal(null);
+
+  private isBoxInitializationStarted: boolean = false;
 
   selectedThemeKey: Signal<string> = computed(() => {
     const config = this.diceConfig();
     if (config && config.theme_colorset) {
       return config.theme_colorset;
     }
-    return 'custom'; // 'custom', wenn theme_colorset null oder undefined ist
+    return 'custom';
   });
 
  constructor() {
@@ -110,28 +112,25 @@ export class Profile implements OnDestroy, AfterViewInit {
       this.fetchProfileData(id);
     });
 
-    effect(() => {
-      const config = this.diceConfig();
-      if (config && this.isDiceBoxInitialized) {
-        this.updateDiceBoxPreview(config);
-      }
-    });
+  effect(() => {
+        const config = this.diceConfig();
+        const container = this.dicePreviewBox();
+
+        // Fall 1: Config ist da, Container ist da, Init hat noch nicht begonnen
+        if (config && container && !this.isBoxInitializationStarted) {
+          this.isBoxInitializationStarted = true; // Lock setzen!
+          this.initializeDiceBox(config);
+        } 
+        // Fall 2: Config ändert sich (z.B. durch Speichern), NACHDEM Init fertig ist
+        else if (config && this.isDiceBoxInitialized()) {
+          this.updateDiceBoxPreview(config);
+        }
+      });
   }
 
-  ngAfterViewInit(): void {
-    this.initializeDiceBox();
-  }
 
   ngOnDestroy(): void {
-    if (this.diceBoxInstance && typeof this.diceBoxInstance.remove === 'function') {
-      try {
-        this.diceBoxInstance.remove();
-        console.log("DiceBox-Vorschau entfernt.");
-      } catch (e) {
-        console.error("Fehler beim Entfernen der DiceBox-Instanz:", e);
-      }
-      this.diceBoxInstance = null;
-    }
+    this.diceBoxInstance = null;
   }
 
   fetchProfileData(id: number) {
@@ -145,17 +144,16 @@ export class Profile implements OnDestroy, AfterViewInit {
         this.kniffelHistory.set(data.kniffelHistory);
         this.diceConfig.set(data.dice_config);
 
-        if (data.dice_config) {
+        const currentConfigStr = JSON.stringify(this.diceConfig());
+        if (data.dice_config && data.dice_config !== currentConfigStr) {
           try {
             this.diceConfig.set(JSON.parse(data.dice_config));
           } catch (e) {
             this.diceConfig.set(this.createDefaultDiceConfig());
           }
-        } else {
+        } else if (!data.dice_config) {
           this.diceConfig.set(this.createDefaultDiceConfig());
         }
-
-        this.initializeDiceBox();
       },
       error: (err) => {
         console.error("Fehler beim Abrufen der Profildaten:", err);
@@ -243,7 +241,6 @@ export class Profile implements OnDestroy, AfterViewInit {
 
   onTextureChange(event: Event) {
     const textureKey = (event.target as HTMLSelectElement).value;
-    // Holen Sie den Schlüssel (key) anstelle des Werts (value)
     const texture = this.texturelist[textureKey as keyof typeof this.texturelist];
     
     this.diceConfig.update(config => ({
@@ -296,21 +293,11 @@ export class Profile implements OnDestroy, AfterViewInit {
       });
   }
 
-  private async initializeDiceBox() {
-    const container = this.dicePreviewBox()?.nativeElement;
-    const config = this.diceConfig();
-
-    // Diese Prüfung wird nun (dank des constructor-Fixes) 
-    // beim Besuch des eigenen Profils sofort 'false' sein und weiterlaufen.
-    if (!container || !config || this.isDiceBoxInitialized) {
-      if (!config) console.log("initializeDiceBox: wird verlassen, !config ist true");
-      if (!container) console.log("initializeDiceBox: wird verlassen, !container ist true");
-      return;
-    }
-
-    this.isDiceBoxInitialized = true;
+  private async initializeDiceBox(config: any) {
+    // Die Prüfungen !container und !config sind hier nicht mehr nötig,
+    // da der 'effect' sie bereits durchgeführt hat.
+    
     console.log("Initialisiere DiceBox-Vorschau...");
-
     try {
       const previewConfig: any = {
         assetPath: "/assets/",
@@ -323,7 +310,6 @@ export class Profile implements OnDestroy, AfterViewInit {
         isInteractive: false
       };
 
-      // Benutzerkonfiguration anwenden
       previewConfig.theme_material = config.theme_material || 'plastic';
       previewConfig.theme_texture = config.theme_texture || 'marble';
       if (config.theme_customColorset) {
@@ -334,20 +320,24 @@ export class Profile implements OnDestroy, AfterViewInit {
         previewConfig.theme_customColorset = null;
       }
       
-      this.diceBoxInstance = new DiceBox("#dice-preview-box", previewConfig); // ID-String verwenden
+      this.diceBoxInstance = new DiceBox("#dice-preview-box", previewConfig);
       await this.diceBoxInstance.initialize();
-      this.diceBoxInstance.roll("1d6"); // Einen Würfel zur Vorschau rollen
+      this.diceBoxInstance.roll("1d6"); 
+
+      setTimeout(() => {
+        this.isDiceBoxInitialized.set(true);
+        this.cdr.detectChanges(); 
+      }, 0);
 
     } catch (e) {
       console.error("Fehler beim Initialisieren der DiceBox-Vorschau:", e);
-      this.isDiceBoxInitialized = false; // Zurücksetzen
+      this.isBoxInitializationStarted = false; // Lock bei Fehler zurücksetzen
     }
   }
 
   private updateDiceBoxPreview(config: any) {
     if (!this.diceBoxInstance) {
-      this.initializeDiceBox();
-      return;
+      return; 
     }
     
     const configUpdate: any = {
