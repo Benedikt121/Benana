@@ -39,7 +39,7 @@
   transform: translateX(-50%); 
   
   font-size: 30px;     /* Macht das '▼' Symbol größer */
-  color: #333;          /* Farbe des Pfeils */
+  color: var(--color-text-dark);          /* Farbe des Pfeils */
   
   /* Stellt sicher, dass der Zeiger *über* dem Rad (Canvas) liegt,
     das von der 'spin-wheel'-Bibliothek erstellt wird.
@@ -61,13 +61,9 @@
   text-align: center;
   margin: 0;
   font-style: italic;
-  color: #666;
+  color: var(--color-text-light);
 }
 
-/* Stellt sicher, dass das Canvas (vom Wheel-Plugin) den Container ausfüllt.
-  Das `:host ::ng-deep` ist notwendig, um ein Element zu stylen,
-  das von einer externen Bibliothek (spin-wheel) erzeugt wird.
-*/
 :host ::ng-deep .wheel-container canvas {
   width: 100% !important;
   height: 100% !important;

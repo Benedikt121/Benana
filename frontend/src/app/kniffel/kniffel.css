@@ -1,49 +1,48 @@
 .kniffel-layout {
     display: flex;
-    flex-wrap: wrap; /* Lässt Blöcke auf Mobilgeräten umbrechen */
+    flex-wrap: wrap;
     gap: 20px;
-    justify-content: center; /* Zentriert die Blöcke, falls nebeneinander */
+    justify-content: center;
   }
 
-  /* Linke Spalte (Würfel) */
+
   .kniffel-container {
-    flex: 2; /* Nimmt mehr Platz ein */
-    min-width: 320px; /* Mindestbreite */
-    max-width: 500px; /* Maximalbreite */
+    flex: 2;
+    min-width: 320px;
+    max-width: 500px;
   }
 
-  /* Rechte Spalte (Scoreboards Wrapper) */
+
   .scoreboard-wrapper {
-    flex: 3; /* Nimmt mehr Platz ein, wenn mehrere Spieler da sind */
+    flex: 3; 
     display: flex;
-    flex-wrap: wrap; /* Lässt Scoreboards umbrechen */
+    flex-wrap: wrap;
     gap: 15px;
     min-width: 300px;
   }
 
-  /* Einzelner Scoreboard-Container */
   .scoreboard-container {
-    flex: 1; /* Jeder Spielerblock wächst gleichmäßig */
+    flex: 1; 
     min-width: 280px;
     font-family: Arial, sans-serif;
-    border: 2px solid transparent; /* Platzhalter für 'is-active-player' */
+    border: 2px solid transparent; 
     border-radius: 8px;
     padding: 10px;
-    background-color: #fdfdfd;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    background-color: var(--color-bg-light);
+    box-shadow: 0 2px 5px var(--color-shadow-light);
   }
 
   /* NEU: Hebt den Spieler hervor, der gerade dran ist */
   .scoreboard-container.is-active-player {
-    border-color: #007bff;
-    box-shadow: 0 0 15px rgba(0,123,255,0.3);
+    border-color: var(--color-primary-blue);
+    box-shadow: 0 0 15px var(--color-primary-blue-shadow);
   }
 
   /* 3D-Box (V16-Stil) */
   #dice-box-background {
     height: 30rem; 
     width: 100%; 
-    border: 1px solid #ccc;
+    border: 1px solid var(--color-border-dark);
     min-height: 300px;
     background-image: url("/assets/textures/tray.png");
     background-size: cover;
@@ -63,24 +62,24 @@
     display: flex;
     justify-content: space-between;
     padding: 8px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--color-border-light);
   }
   .scoreboard-row.is-clickable:hover {
-    background-color: #f0f8ff;
+    background-color: var(--color-primary-blue-lighter);
   }
   .scoreboard-row.is-clickable {
     cursor: pointer;
   }
   .scoreboard-row.is-set {
-    color: #555;
-    background-color: #f9f9f9;
+    color: var(--color-text-medium);
+    background-color: var(--color-bg-medium);
   }
   .scoreboard-row.is-set .row-score {
     font-weight: bold;
-    color: #333;
+    color: var(--color-text-dark);
   }
   .scoreboard-row:not(.is-set) .row-score {
-    color: #007bff;
+    color: var(--color-primary-blue);
     font-weight: bold;
   }
   .row-name {
@@ -91,15 +90,15 @@
     min-width: 40px;
   }
   .scoreboard-total-row {
-    background-color: #f0f0f0;
+    background-color: var(--color-bg-dark);
     font-weight: bold;
   }
   .scoreboard-total-row.final-total {
-    background-color: #e0e0e0;
+    background-color: var(--color-bg-darker);
   }
   .scoreboard-total-row.grand-total {
-    background-color: #333;
-    color: white;
+    background-color: var(--color-text-dark);
+    color: var(--color-white);
     font-size: 1.2rem;
   }
 
@@ -113,7 +112,7 @@
   .die-value {
     width: 60px;
     height: 60px;
-    border: 2px solid #555;
+    border: 2px solid var(--color-text-medium);
     border-radius: 5px;
     display: flex;
     flex-direction: column;
@@ -123,11 +122,11 @@
     font-size: 24px;
     font-weight: bold;
     user-select: none;
-    background-color: white;
+    background-color: var(--color-white);
   }
   .die-value.held {
-    background-color: #d1ecff;
-    border-color: #007bff;
+    background-color: var(--color-primary-blue-light);
+    border-color: var(--color-primary-blue);
   }
   .die-value small {
     font-size: 10px;

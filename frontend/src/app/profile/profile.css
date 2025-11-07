@@ -5,8 +5,8 @@
   border-radius: 50%;
   overflow: hidden;
   margin: -95px auto 10px auto; /* Negativer Margin zieht es nach oben */
-  background-color: #eee;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  background-color: var(--color-border-light);
+  box-shadow: 0 4px 10px var(--color-black);
   position: relative; /* Für z-index */
   z-index: 2;
 }
