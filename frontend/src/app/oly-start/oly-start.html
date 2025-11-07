@@ -32,7 +32,6 @@
       Olympiade beitreten
     </button>
     <p *ngIf="!currentUser()">Bitte einloggen, um beizutreten.</p>
-    <p *ngIf="isCurrentUserJoined()" class="joined-text">Du bist beigetreten!</p>
   </div>
 
   <div class="oly-column game-control-column">
@@ -56,8 +55,8 @@
     </div>
 
     <div #wheelContainer class="wheel-container">
-        <div class="wheel-pointer">▼</div>
         <p *ngIf="!isSpinning() && !canDeclareWinner()">Wähle nächstes Spiel...</p>
+        <div class="wheel-pointer">▼</div>
         <p *ngIf="isSpinning()">Dreht...</p>
         <p *ngIf="canDeclareWinner()">Wähle einen Gewinner (oben)...</p>
     </div>

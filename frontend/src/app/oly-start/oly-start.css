@@ -171,28 +171,18 @@
 
 .wheel-container p {
   position: absolute;
-  /* Zentriert Text in der Mitte des Rads */
-  top: 50%;
-  left: 0;
-  width: 100%;
-  transform: translateY(-50%);
-  text-align: center;
-  margin: 0;
-  font-style: italic;
-  color: var(--color-text-light);
-  z-index: 1; /* Hinter dem Rad-Canvas (das hat z-index 5) */
-  pointer-events: none;
+  top: -40px; /* Leicht über dem Rad */
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-text-dark);
 }
 
 :host ::ng-deep .wheel-container canvas {
   width: 100% !important;
   height: 100% !important;
   object-fit: contain;
-  /* z-index wird von der Bibliothek gesteuert (meist 5) */
 }
 
-
-/* Rechte Spalte: Ergebnisse */
 .results-column {
   flex: 1;
   min-width: 300px;

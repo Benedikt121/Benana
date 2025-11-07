@@ -18,3 +18,10 @@ img.header-image:hover {
         transform: scale(1.1);
     }
 }
+
+.header{
+    -webkit-user-select: none; /* Verhindert Textmarkierung auf Safari */
+    -ms-user-select: none; /* Verhindert Textmarkierung auf IE */
+    user-select: none; /* Standard zum Verhindern von Textmarkierung */
+    touch-action: none; /* Verhindert Scrollen/Zoomen auf dem gesamten Body */
+}    
