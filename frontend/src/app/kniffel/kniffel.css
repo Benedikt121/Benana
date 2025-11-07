@@ -158,6 +158,6 @@
   border-radius: 50%;
   object-fit: cover;
   margin-right: 10px;
-  border: 2px solid rgba(var(--player-color-rgb), 0.2); 
+  border: 2px solid rgba(var(--player-color-rgb), 1); 
   background-color: #fff;
 }
