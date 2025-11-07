@@ -13,6 +13,8 @@ interface Player {
   userId: number;
   username: string;
   score: number;
+  avatarUrl?: string | null;
+  personalColor?: string;
 }
 
 interface OlympiadeResult {

@@ -733,20 +733,33 @@ socket.on('endOlympiade', () => {
   broadcastOlympiadeStatus();
 });
 
-  socket.on('joinOlympiade', (userData) => {
+  socket.on('joinOlympiade', async (userData) => {
     if (!activeOlympiade.isActive) {
       return socket.emit('olympiadeError', { message: 'Keine aktive Olympiade zum Beitreten.' });
     }
     if (!userData || typeof userData.userId !== 'number' || typeof userData.username !== 'string') {
        return socket.emit('olympiadeError', { message: 'Ungültige Benutzerdaten.' });
     }
+
+    const user = await new Promise((resolve, reject) => {
+    db.get('SELECT avatar_url, personal_color FROM users WHERE id = ?', [userData.userId], (err, row) => {
+      if (err) return reject(err);
+      resolve(row);
+      });
+    });
+
+    const avatarUrl = user?.avatar_url || null;
+    const personalColor = user?.personal_color || '#FFFFFF';
+
     // Prüfen, ob Spieler schon drin ist
     if (!activeOlympiade.players.some(p => p.userId === userData.userId)) {
       activeOlympiade.players.push({
         userId: userData.userId,
         username: userData.username,
         score: 0,
-        socketId: socket.id // Wichtig für Disconnect-Handling
+        socketId: socket.id, // Wichtig für Disconnect-Handling
+        avatarUrl: avatarUrl,
+        personalColor: personalColor
       });
       console.log(`Spieler ${userData.username} (ID: ${userData.userId}) ist beigetreten.`);
       broadcastOlympiadeStatus(); // Spielerliste an alle senden
@@ -756,6 +769,8 @@ socket.on('endOlympiade', () => {
         const playerIndex = activeOlympiade.players.findIndex(p => p.userId === userData.userId);
         if (playerIndex > -1) {
             activeOlympiade.players[playerIndex].socketId = socket.id;
+            activeOlympiade.players[playerIndex].avatarUrl = avatarUrl;
+            activeOlympiade.players[playerIndex].personalColor = personalColor;
         }
     }
   });
