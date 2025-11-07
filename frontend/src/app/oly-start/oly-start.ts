@@ -20,7 +20,7 @@ import { SocketService } from '../socket'; // SocketService importieren
 
 // Interfaces (Game, Player, OlympiadeResult) bleiben unverändert
 interface Game { id: number; name: string; }
-interface Player { userId: number; username: string; score: number; }
+interface Player { userId: number; username: string; score: number; avatarUrl?: string | null; personalColor?: string; }
 interface OlympiadeResult { gameId: number; round: number; winnerUserId: number; pointsAwarded: number; }
 
 @Component({
@@ -108,6 +108,36 @@ canDeclareWinner: Signal<boolean> = computed(() => {
   );
 
   private isActiveSubscription: Subscription | null = null;
+
+    public hexToRgb(hex: string): string {
+    if (!hex) hex = '#FFFFFF';
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (result) {
+      const r = parseInt(result[1], 16);
+      const g = parseInt(result[2], 16);
+      const b = parseInt(result[3], 16);
+      return `${r}, ${g}, ${b}`; // z.B. "255, 100, 50"
+    }
+    return '255, 255, 255'; // Fallback
+  }
+
+  public getContrastColor(hex: string): string {
+    if (!hex) hex = '#FFFFFF';
+    const rgb = this.hexToRgb(hex).split(',').map(Number);
+    const r = rgb[0];
+    const g = rgb[1];
+    const b = rgb[2];
+    
+    // Formel zur Berechnung der wahrgenommenen Helligkeit (Luminanz)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
+  }
+
+  public getPlayer(userId: number | undefined): Player | undefined {
+    if (userId === undefined) return undefined;
+    return this.players().find(p => p.userId === userId);
+  }
 
   ngOnInit(): void {
     console.log('OlyStart OnInit');
@@ -244,9 +274,6 @@ canDeclareWinner: Signal<boolean> = computed(() => {
         return;
     }
 
-    // WICHTIG: Den Index anhand der *aktuell im Rad befindlichen* Items finden.
-    // `availableGames` vom Server dient nur zur ID->Index Zuordnung für *diese* Drehung.
-    // Finde den Index des Ziel-Spiels in der Liste der *aktuell angezeigten* Spiele
     const currentWheelGames = this.availableGamesForWheel(); // Die Spiele, die gerade im Rad sind
     const targetIndex = currentWheelGames.findIndex(game => game.id === targetGameId);
 

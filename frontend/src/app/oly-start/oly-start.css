@@ -1,71 +1,243 @@
-.wheel-container {
-    height: 30rem; 
-    overflow: hidden;
-
-    user-select: none; /* Standard zum Verhindern von Textmarkierung */
-    touch-action: none; /* Verhindert Scrollen/Zoomen auf dem gesamten Body */
+/* Haupt-Layout */
+.oly-layout {
+  display: flex;
+  flex-wrap: wrap; /* Lässt Spalten auf Mobilgeräten umbrechen */
+  gap: 20px;
+  justify-content: center;
+  padding: 10px;
 }
 
-/* oly-start.css */
-
-/* Der Hauptcontainer, der das Rad, den Zeiger und den Text enthält */
-.wheel-container {
-  /* WICHTIG: Macht dies zum Positionierungs-Kontext (Anker)
-    für den absolut positionierten Zeiger. 
-  */
-  position: relative; 
-  
-  /* Definiere eine feste Größe für das Rad.
-    Passe dies (300px) an, falls dein Rad größer oder kleiner ist.
-  */
-  width: 300px;
-  height: 300px;
-  
-  /* Zentriert den Rad-Container selbst auf der Seite (optional) */
-  margin: 40px auto; /* 40px Abstand oben/unten, auto links/rechts */
+.oly-column {
+  padding: 15px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2); /* Leichter Glaseffekt */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Der Zeiger (Pfeil '▼') */
+.oly-column h3, 
+.oly-column h4 {
+  margin-top: 0;
+  border-bottom: 2px solid rgba(0,0,0,0.1);
+  padding-bottom: 10px;
+}
+
+/* Linke Spalte: Spieler */
+.player-column {
+  flex: 1; /* Nimmt 1 Teil des verfügbaren Platzes ein */
+  min-width: 280px; /* Mindestbreite, bevor es umbricht */
+}
+
+.player-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  /* Verwendet die CSS-Variablen, die im HTML gesetzt wurden */
+  border: 2px solid var(--player-color-hex);
+  background-color: rgba(var(--player-color-rgb), 0.15);
+  transition: all 0.2s ease;
+}
+
+.player-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 12px;
+  border: 2px solid var(--player-color-hex);
+  background-color: #fff;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.player-name {
+  font-weight: bold;
+}
+
+.player-score {
+  font-size: 0.9em;
+  color: #333;
+}
+
+.join-button {
+  width: 100%;
+  margin-top: 10px;
+}
+.joined-text {
+  text-align: center;
+  font-weight: bold;
+  color: var(--color-primary-blue);
+}
+
+
+/* Mittelspalte: Steuerung */
+.game-control-column {
+  flex: 2; /* Nimmt 2 Teile ein (breiter) */
+  min-width: 320px;
+  max-width: 500px; /* Begrenzt die Breite des Glücksrads */
+}
+
+.current-game-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: var(--color-primary-blue);
+  text-align: center;
+  margin: 10px 0;
+}
+
+.winner-selection {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 10px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 6px;
+}
+
+.game-selection-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.finished-text {
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: green;
+}
+
+/* Stile für das Glücksrad (aus alter CSS-Datei angepasst) */
+.wheel-container {
+  position: relative;
+  width: 100%; /* Passt sich an Spaltenbreite an */
+  max-width: 400px; /* Maximale Größe */
+  height: auto;
+  aspect-ratio: 1 / 1; /* Hält es quadratisch */
+  margin: 20px auto;
+  overflow: visible; /* Erlaubt dem Zeiger, darüber zu liegen */
+}
+
 .wheel-pointer {
-  position: absolute;  /* Positioniert das Element relativ zum .wheel-container */
-  
-  /* Positioniert die Spitze des Pfeils genau über der Mitte des Containers */
-  top: -15px;          /* 15px *über* dem oberen Rand des Containers */
-  left: 50%;           /* Zentriert es horizontal (Startpunkt in der Mitte) */
-  
-  /* Zieht das Element um 50% seiner *eigenen* Breite nach links zurück.
-    Dies ist der Trick für perfektes horizontales Zentrieren.
-  */
-  transform: translateX(-50%); 
-  
-  font-size: 30px;     /* Macht das '▼' Symbol größer */
-  color: var(--color-text-dark);          /* Farbe des Pfeils */
-  
-  /* Stellt sicher, dass der Zeiger *über* dem Rad (Canvas) liegt,
-    das von der 'spin-wheel'-Bibliothek erstellt wird.
-  */
-  z-index: 10;         
-  
-  /* Verhindert, dass der Pfeil Klicks blockiert (falls er über dem Rad schwebt) */
-  pointer-events: none; 
+  position: absolute;
+  top: -10px; /* Leicht über dem Rad */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px; /* Etwas kleiner */
+  color: var(--color-text-dark);
+  z-index: 10;
+  pointer-events: none;
 }
 
-/* Die Texte ("Wähle..." / "Dreht...") */
 .wheel-container p {
   position: absolute;
-  
-  /* Positioniert den Text *unter* dem Rad-Container */
-  bottom: -30px; /* 30px unter dem unteren Rand des Containers */
+  /* Zentriert Text in der Mitte des Rads */
+  top: 50%;
   left: 0;
   width: 100%;
+  transform: translateY(-50%);
   text-align: center;
   margin: 0;
   font-style: italic;
   color: var(--color-text-light);
+  z-index: 1; /* Hinter dem Rad-Canvas (das hat z-index 5) */
+  pointer-events: none;
 }
 
 :host ::ng-deep .wheel-container canvas {
   width: 100% !important;
   height: 100% !important;
   object-fit: contain;
+  /* z-index wird von der Bibliothek gesteuert (meist 5) */
+}
+
+
+/* Rechte Spalte: Ergebnisse */
+.results-column {
+  flex: 1;
+  min-width: 300px;
+}
+
+.results-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.game-result-card {
+  list-style: none;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  background: #fdfdfd;
+  border: 1px solid #ddd;
+  transition: all 0.2s ease;
+}
+
+.game-result-card.is-played {
+  /* Verwende die Farbe des Gewinners für den Rand */
+  border-left: 5px solid var(--player-color-hex);
+  background-color: rgba(var(--player-color-rgb), 0.05);
+}
+
+.game-result-card.is-current {
+  border: 2px solid var(--color-primary-blue);
+  box-shadow: 0 0 10px var(--color-primary-blue-shadow);
+}
+
+.game-result-card .game-name {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.game-result-card.is-played .game-name {
+  text-decoration: line-through;
+  color: #777;
+}
+
+.winner-info {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.winner-avatar {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 8px;
+}
+
+.game-pending {
+  font-style: italic;
+  color: #888;
+  font-size: 0.9em;
+}
+.game-pending.current-text {
+  color: var(--color-primary-blue);
+  font-weight: bold;
+}
+
+/* Footer-Steuerung */
+.footer-controls {
+  flex-basis: 100%; /* Nimmt volle Breite ein */
+  text-align: center;
+  margin-top: 20px;
 }

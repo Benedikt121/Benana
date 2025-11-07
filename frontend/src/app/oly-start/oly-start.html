@@ -4,48 +4,65 @@
   <p>Lade Olympiade-Daten...</p>
 </div>
 
-<div *ngIf="!isLoading() && isActive()">
+<div class="oly-layout" *ngIf="!isLoading() && isActive()">
 
-  <div class="players-list">
+  <div class="oly-column player-column">
     <h3>Teilnehmer</h3>
-    <ul *ngIf="players().length > 0; else noPlayers">
-      <li *ngFor="let player of players()">
-        {{ player.username }}: {{ player.score }} Punkte
+    
+    <ul *ngIf="players().length > 0; else noPlayers" class="player-list">
+      <li *ngFor="let player of players()" 
+          class="player-card"
+          [style.--player-color-hex]="player.personalColor || '#FFFFFF'"
+          [style.--player-color-rgb]="hexToRgb(player.personalColor || '#FFFFFF')">
+        
+        <img [src]="player.avatarUrl || '/Portrait_Placeholder.png'" alt="Avatar" class="player-avatar">
+        
+        <div class="player-info">
+          <span class="player-name">
+            {{ player.username }}
+            <span *ngIf="player.userId === currentUser()?.userId">(Du)</span>
+          </span>
+          <span class="player-score">{{ player.score }} Punkte</span>
+        </div>
       </li>
     </ul>
     <ng-template #noPlayers><p>Noch keine Spieler beigetreten.</p></ng-template>
 
-    <button *ngIf="currentUser() && !isCurrentUserJoined()" (click)="joinGame()">
+    <button *ngIf="currentUser() && !isCurrentUserJoined()" (click)="joinGame()" class="join-button">
       Olympiade beitreten
     </button>
     <p *ngIf="!currentUser()">Bitte einloggen, um beizutreten.</p>
-    <p *ngIf="isCurrentUserJoined()">Beigetreten</p>
+    <p *ngIf="isCurrentUserJoined()" class="joined-text">Du bist beigetreten!</p>
   </div>
 
-  <div class="game-selection" *ngIf="players().length > 0">
-    <h3>Spielauswahl ({{ results().length }} / {{ selectedGamesList().length }} gespielt)</h3>
+  <div class="oly-column game-control-column">
+    <h3>Spielsteuerung ({{ results().length }} / {{ selectedGamesList().length }} gespielt)</h3>
 
     <div *ngIf="currentGame(); let game">
       <div *ngIf="canDeclareWinner()">
         <h4>Aktuelles Spiel (Runde {{ results().length + 1 }} - {{ results().length + 1 }} Punkte):</h4>
-        <p class="current-game">{{ game.name }}</p>
-        Gewinner auswählen:
-        <select #winnerSelect>
-          <option *ngFor="let player of players()" [value]="player.userId">
-            {{ player.username }}
-          </option>
-        </select>
-        <button (click)="declareWinner(+winnerSelect.value)">Gewinner bestätigen</button>
+        <p class="current-game-title">{{ game.name }}</p>
+        
+        <div class="winner-selection">
+          Gewinner auswählen:
+          <select #winnerSelect>
+            <option *ngFor="let player of players()" [value]="player.userId">
+              {{ player.username }}
+            </option>
+          </select>
+          <button (click)="declareWinner(+winnerSelect.value)">Gewinner bestätigen</button>
+        </div>
       </div>
     </div>
 
     <div #wheelContainer class="wheel-container">
         <div class="wheel-pointer">▼</div>
-        <p *ngIf="!isSpinning()">Wähle nächstes Spiel...</p>
+        <p *ngIf="!isSpinning() && !canDeclareWinner()">Wähle nächstes Spiel...</p>
         <p *ngIf="isSpinning()">Dreht...</p>
+        <p *ngIf="canDeclareWinner()">Wähle einen Gewinner (oben)...</p>
     </div>
 
-    <div *ngIf="!isSpinning() && canSelectNextGame() && !canDeclareWinner()">
+    <div *ngIf="!isSpinning() && canSelectNextGame() && !canDeclareWinner()" class="game-selection-buttons">
        <ng-container *ngIf="selectedGamesList().length > nextGameIndex()">
             <button (click)="selectGameManually(selectedGamesList()[nextGameIndex()].id)">
                 Nächstes: {{ selectedGamesList()[nextGameIndex()].name }}
@@ -54,27 +71,49 @@
        <button (click)="selectGameRandomly()" [disabled]="isSpinning()">Zufälliges Spiel drehen</button>
     </div>
 
-     <p *ngIf="isOlympiadeFinished()">Alle Spiele gespielt!</p>
+     <p *ngIf="isOlympiadeFinished()" class="finished-text">Alle Spiele gespielt!</p>
   </div>
 
-  <div class="games-list">
-    <h4>Spiele in dieser Olympiade:</h4>
-    <ul>
+  <div class="oly-column results-column">
+    <h3>Ergebnisse & Spielplan</h3>
+    
+    <ul class="results-list">
       <li *ngFor="let game of selectedGamesList(); let i = index"
-          [class.current-game]="i === currentGameIndex()"
-          [class.played-game]="isGamePlayed(game.id)">
-        {{ i + 1 }}. {{ game.name }}
-        <ng-container *ngIf="isGamePlayed(game.id)">
-          <ng-container *ngIf="getResultForGame(game.id) as gameResult">
-            <span> - Gewinner: {{ getWinnerName(gameResult.winnerUserId) }} ({{ gameResult.pointsAwarded }} Pkt.)</span>
-          </ng-container>
+          class="game-result-card"
+          [class.is-played]="isGamePlayed(game.id)"
+          [class.is-current]="i === currentGameIndex()"
+          [style.--player-color-hex]="getPlayer(getResultForGame(game.id)?.winnerUserId)?.personalColor || '#AAAAAA'"
+          [style.--player-color-rgb]="hexToRgb(getPlayer(getResultForGame(game.id)?.winnerUserId)?.personalColor || '#AAAAAA')">
+        
+        <span class="game-name">{{ i + 1 }}. {{ game.name }}</span>
+
+        <ng-container *ngIf="getResultForGame(game.id) as gameResult">
+          <div class="winner-info"
+               [style.background-color]="getPlayer(gameResult.winnerUserId)?.personalColor || '#eee'"
+               [style.color]="getContrastColor(getPlayer(gameResult.winnerUserId)?.personalColor || '#eee')">
+            
+            <img [src]="getPlayer(gameResult.winnerUserId)?.avatarUrl || '/Portrait_Placeholder.png'" alt="Winner Avatar" class="winner-avatar">
+            <span>
+              Gewinner: {{ getWinnerName(gameResult.winnerUserId) }} ({{ gameResult.pointsAwarded }} Pkt.)
+            </span>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="!isGamePlayed(game.id) && i === currentGameIndex()">
+           <span class="game-pending current-text">► Aktuelles Spiel!</span>
+        </ng-container>
+        
+        <ng-container *ngIf="!isGamePlayed(game.id) && i !== currentGameIndex()">
+          <span class="game-pending">Steht noch aus...</span>
         </ng-container>
       </li>
     </ul>
   </div>
 
-  <button (click)="finishOlympiade()">Olympiade Beenden & Ergebnisse speichern</button>
+</div>
 
+<div *ngIf="!isLoading() && isActive()" class="footer-controls">
+  <button (click)="finishOlympiade()">Olympiade Beenden & Ergebnisse speichern</button>
 </div>
 
 <div *ngIf="!isLoading() && !isActive()">
