@@ -41,6 +41,31 @@ export class Kniffel implements AfterViewInit, OnDestroy {
 
   private router = inject(Router);
 
+  public hexToRgb(hex: string): string {
+    if (!hex) hex = '#FFFFFF';
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (result) {
+      const r = parseInt(result[1], 16);
+      const g = parseInt(result[2], 16);
+      const b = parseInt(result[3], 16);
+      return `${r}, ${g}, ${b}`; // z.B. "255, 100, 50"
+    }
+    return '255, 255, 255'; // Fallback
+  }
+
+  public getContrastColor(hex: string): string {
+    if (!hex) hex = '#FFFFFF';
+    const rgb = this.hexToRgb(hex).split(',').map(Number);
+    const r = rgb[0];
+    const g = rgb[1];
+    const b = rgb[2];
+    
+    // Formel zur Berechnung der wahrgenommenen Helligkeit (Luminanz)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
+  }
+
   constructor(
     private cdr: ChangeDetectorRef,
     public kniffelState: KniffelStateService,

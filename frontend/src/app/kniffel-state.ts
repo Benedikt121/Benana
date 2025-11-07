@@ -20,6 +20,8 @@ export interface KniffelPlayer {
   username: string;
   socketId: string;
   diceConfig?: any;
+  personalColor?: string;
+  avatarUrl?: string | null;
 }
 export interface KniffelGameState {
   isActive: boolean;

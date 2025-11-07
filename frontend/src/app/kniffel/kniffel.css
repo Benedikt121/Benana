@@ -21,24 +21,24 @@
     min-width: 300px;
   }
 
-  .scoreboard-container {
+.scoreboard-container {
     flex: 1; 
     min-width: 280px;
     font-family: Arial, sans-serif;
-    border: 2px solid transparent; 
+    border: 2px solid var(--player-color-hex, #ccc); 
     border-radius: 8px;
     padding: 10px;
-    background-color: var(--color-bg-light);
-    box-shadow: 0 2px 5px var(--color-shadow-light);
+    /* Hintergrund mit 10% Deckkraft der Spielerfarbe */
+    background-color: rgba(var(--player-color-rgb, 255,255,255), 0.3); 
+    /* Leichter Schatten in der Spielerfarbe */
+    box-shadow: 0 4px 10px rgba(var(--player-color-rgb, 0,0,0), 0.2); 
   }
 
-  /* NEU: Hebt den Spieler hervor, der gerade dran ist */
   .scoreboard-container.is-active-player {
-    border-color: var(--color-primary-blue);
-    box-shadow: 0 0 15px var(--color-primary-blue-shadow);
+    border-width: 3px; /* Etwas dickerer Rand für den aktiven Spieler */
+    box-shadow: 0 0 15px rgba(var(--player-color-rgb, 0,0,0), 0.5);
   }
 
-  /* 3D-Box (V16-Stil) */
   #dice-box-background {
     height: 30rem; 
     width: 100%; 
@@ -89,16 +89,20 @@
     text-align: right;
     min-width: 40px;
   }
-  .scoreboard-total-row {
-    background-color: var(--color-bg-dark);
+.scoreboard-total-row {
+    /* Hintergrund mit 15% Deckkraft */
+    background-color: rgba(var(--player-color-rgb, 200,200,200), 0.35);
     font-weight: bold;
   }
   .scoreboard-total-row.final-total {
-    background-color: var(--color-bg-darker);
+    /* Hintergrund mit 25% Deckkraft */
+    background-color: rgba(var(--player-color-rgb, 180,180,180), 0.45);
   }
   .scoreboard-total-row.grand-total {
-    background-color: var(--color-text-dark);
-    color: var(--color-white);
+    /* Volle Spielerfarbe als Hintergrund */
+    background-color: var(--player-color-hex);
+    /* Dynamische Kontrastfarbe (schwarz/weiß) für Text */
+    color: var(--player-color-contrast);
     font-size: 1.2rem;
   }
 
@@ -140,3 +144,20 @@
   button:disabled {
     opacity: 0.5;
   }
+
+  .scoreboard-header {
+  display: flex;
+  align-items: center;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.scoreboard-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 10px;
+  border: 2px solid rgba(var(--player-color-rgb), 0.2); 
+  background-color: #fff;
+}

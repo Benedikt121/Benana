@@ -51,11 +51,17 @@
   <div class="scoreboard-wrapper">
     
     <div *ngFor="let player of gameState.players" class="scoreboard-container"
-         [class.is-active-player]="player.socketId === gameState.currentPlayerSocketId">
+     [class.is-active-player]="player.socketId === gameState.currentPlayerSocketId"
+     [style.--player-color-hex]="player.personalColor || '#FFFFFF'"
+     [style.--player-color-rgb]="hexToRgb(player.personalColor || '#FFFFFF')"
+     [style.--player-color-contrast]="getContrastColor(player.personalColor || '#FFFFFF')">
       
-      <h3>
-        {{ player.username }} 
-        <span *ngIf="player.userId === myUserId">(Du)</span>
+      <h3 class="scoreboard-header">
+        <img [src]="player.avatarUrl || '/Portrait_Placeholder.png'" alt="Avatar" class="scoreboard-avatar">
+        <span>
+          {{ player.username }} 
+          <span *ngIf="player.userId === myUserId">(Du)</span>
+        </span>
       </h3>
       
       <ng-container *ngIf="gameState.scoreboards[player.userId] as scoreboard">
