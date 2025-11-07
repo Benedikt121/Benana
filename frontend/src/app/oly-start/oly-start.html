@@ -63,12 +63,20 @@
     </div>
 
     <div *ngIf="!isSpinning() && canSelectNextGame() && !canDeclareWinner()" class="game-selection-buttons">
-       <ng-container *ngIf="selectedGamesList().length > nextGameIndex()">
-            <button (click)="selectGameManually(selectedGamesList()[nextGameIndex()].id)">
-                Nächstes: {{ selectedGamesList()[nextGameIndex()].name }}
-            </button>
-       </ng-container>
+       
        <button (click)="selectGameRandomly()" [disabled]="isSpinning()">Zufälliges Spiel drehen</button>
+
+       <div class="manual-selection">
+         <label for="manual-game-select">Oder manuell wählen:</label>
+         <select #manualGameSelect>
+           <option *ngFor="let game of availableGamesForWheel()" [value]="game.id">
+             {{ game.name }}
+           </option>
+         </select>
+         <button (click)="selectGameManually(+manualGameSelect.value)" [disabled]="availableGamesForWheel().length === 0 || isSpinning()">
+           Dieses Spiel starten
+         </button>
+       </div>
     </div>
 
      <p *ngIf="isOlympiadeFinished()" class="finished-text">Alle Spiele gespielt!</p>

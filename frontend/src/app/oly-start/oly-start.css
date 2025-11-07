@@ -106,12 +106,39 @@
   border-radius: 6px;
 }
 
+/* --- STILE HINZUGEFÜGT/GEÄNDERT --- */
 .game-selection-buttons {
   display: flex;
-  gap: 10px;
-  justify-content: center;
+  flex-direction: column; /* Buttons/Auswahl untereinander */
+  gap: 15px; /* Abstand zwischen Zufall & Manuell */
+  align-items: center;
   margin-top: 15px;
 }
+
+.manual-selection {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap; /* Umbruch bei wenig Platz */
+  padding: 10px;
+  background: rgba(0,0,0,0.03);
+  border-radius: 6px;
+  width: 90%; /* Nimmt fast die ganze Breite der Spalte ein */
+}
+
+.manual-selection label {
+  font-size: 0.9em;
+  font-weight: bold;
+  flex-basis: 100%; /* Label immer oben */
+  text-align: center;
+}
+
+.manual-selection select {
+  flex-grow: 1; /* Select füllt verfügbaren Platz */
+}
+/* --- ENDE ÄNDERUNGEN --- */
+
 
 .finished-text {
   text-align: center;
