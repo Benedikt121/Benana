@@ -28,7 +28,6 @@
     border: 2px solid var(--player-color-hex, #ccc); 
     border-radius: 8px;
     padding: 10px;
-    /* Hintergrund mit 10% Deckkraft der Spielerfarbe */
     background-color: rgba(var(--player-color-rgb, 255,255,255), 0.3); 
     /* Leichter Schatten in der Spielerfarbe */
     box-shadow: 0 4px 10px rgba(var(--player-color-rgb, 0,0,0), 0.2); 
@@ -72,7 +71,7 @@
   }
   .scoreboard-row.is-set {
     color: var(--color-text-medium);
-    background-color: var(--color-bg-medium);
+    background-color: rgba(var(--player-color-rgb, 255,255,255), 0.1); 
   }
   .scoreboard-row.is-set .row-score {
     font-weight: bold;
@@ -90,12 +89,10 @@
     min-width: 40px;
   }
 .scoreboard-total-row {
-    /* Hintergrund mit 15% Deckkraft */
     background-color: rgba(var(--player-color-rgb, 200,200,200), 0.35);
     font-weight: bold;
   }
   .scoreboard-total-row.final-total {
-    /* Hintergrund mit 25% Deckkraft */
     background-color: rgba(var(--player-color-rgb, 180,180,180), 0.45);
   }
   .scoreboard-total-row.grand-total {
